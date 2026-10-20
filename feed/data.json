@@ -1,0 +1,809 @@
+{
+ "source": {
+  "file": "7inch_Drone_Master_Build_Sheet.xlsx",
+  "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
+  "modified": "Tue, 20 Oct 2026 12:18:39 GMT",
+  "sha256": "d86f714019ebf964",
+  "synced_at": "2026-10-20T13:15:59+00:00",
+  "sheets": [
+   "Master Build Sheet",
+   "cart",
+   "Motor",
+   "Efficiency"
+  ]
+ },
+ "master": {
+  "title": "7-INCH LONG-RANGE AUTONOMOUS QUADCOPTER  —  MASTER BUILD SHEET",
+  "mission": "Mission: ~30 min endurance · 200 g payload · 6S2P Li-ion · Jetson Orin Nano autonomy · AUW hard-locked 1.9 kg · Prices verified Jul 2026 (live-checked, vendor stock varies)",
+  "items": [
+   {
+    "system": "Propulsion",
+    "pick": "PRIMARY",
+    "component": "BrotherHobby Avenger 2806.5 1300KV",
+    "specs": "12N14P, N52H magnets, Ti hollow shaft, 4-6S, ~41g. Low-KV for 6S endurance; spec'd for 6-8\" props. Hover ~475g/motor sits in efficiency valley (~5 g/W).",
+    "weight_g": 41,
+    "unit_price": 24.99,
+    "qty": 4,
+    "line_total": 99.96,
+    "compat": "19x19 bolt pattern — frame arms MUST be 19x19 (not 16x16). 6S ✓. M5 shaft.",
+    "source": "rotorriot.com / addictiverc.com"
+   },
+   {
+    "system": "Propulsion",
+    "pick": "backup",
+    "component": "iFlight XING 2806.5 1300KV",
+    "specs": "Heavier (~53g) but more peak-thrust reserve (2586g @7x4). Same 6S low-KV class.",
+    "weight_g": 53,
+    "unit_price": 28,
+    "qty": 4,
+    "line_total": 112,
+    "compat": "Confirm 19x19 or M3 pattern vs frame. 6S ✓.",
+    "source": "iflight-rc.com"
+   },
+   {
+    "system": "ESC",
+    "pick": "PRIMARY",
+    "component": "JHEMCU AM32 60A 4-in-1",
+    "specs": "True 60A cont/ch, onboard current sensor, AM32 firmware (actively developed). Hover draw only ~4.3A/motor = huge headroom. Telemetry for Pixhawk.",
+    "weight_g": 15.4,
+    "unit_price": 37.5,
+    "qty": 1,
+    "line_total": 37.5,
+    "compat": "AM32 ✓ PX4/ArduPilot. 6S ✓. 30.5x30.5 mount — match to FC/frame.",
+    "source": "jhemcu / rdq / getfpv"
+   },
+   {
+    "system": "ESC",
+    "pick": "backup",
+    "component": "Holybro Tekko32 F4 60A 4-in-1",
+    "specs": "50A cont/60A burst, F4 processor, proven. Brand-matches Pixhawk.",
+    "weight_g": 15.6,
+    "unit_price": 59,
+    "qty": 1,
+    "line_total": 59,
+    "compat": "BLHeli_32 (note: no longer developed). 6S ✓. Pixhawk-native.",
+    "source": "holybro.com"
+   },
+   {
+    "system": "Propeller",
+    "pick": "PRIMARY",
+    "component": "Gemfan LR7035 (7x3.5 bi-blade)",
+    "specs": "3.5\" pitch bi-blade = max endurance (pitch is #1 endurance lever). Cruises 3-4A/motor for 30+ min.",
+    "weight_g": 4.2,
+    "unit_price": 3.5,
+    "qty": 2,
+    "line_total": 7,
+    "compat": "7\" ✓ on 2806.5. Bi-blade ✓. M5 bore ✓. Buy multi-packs to trial.",
+    "source": "gemfan / rdq (4-pack)"
+   },
+   {
+    "system": "Propeller",
+    "pick": "backup",
+    "component": "Gemfan Flash 7042 (7x4.2 bi-blade)",
+    "specs": "4.2\" pitch — slightly more speed/thrust to trial vs LR7035. AVOID plain '7040' (often tri-blade).",
+    "weight_g": 4.5,
+    "unit_price": 3.5,
+    "qty": 2,
+    "line_total": 7,
+    "compat": "7\" ✓. Bi-blade ✓. M5 bore ✓.",
+    "source": "gemfan / getfpv"
+   },
+   {
+    "system": "Flight Controller",
+    "pick": "PRIMARY",
+    "component": "Holybro Pixhawk 6C",
+    "specs": "STM32H743 @480MHz, REDUNDANT IMUs (Bosch+InvenSense), vibration isolation + IMU heating, PX4 pre-installed. Redundancy = insurance for Jetson payload + autonomy.",
+    "weight_g": 34,
+    "unit_price": 140,
+    "qty": 1,
+    "line_total": 140,
+    "compat": "PX4/ArduPilot ✓ (free). MAVLink→Jetson ✓. M10 GPS listed as supported.",
+    "source": "holybro.com"
+   },
+   {
+    "system": "Flight Controller",
+    "pick": "backup",
+    "component": "Holybro Kakute H7 v2",
+    "specs": "H7-class, SINGLE IMU, dual ESC ports, BT tuning. Cheaper but no IMU redundancy + more DIY wiring.",
+    "weight_g": 8,
+    "unit_price": 63,
+    "qty": 1,
+    "line_total": 63,
+    "compat": "ArduPilot ✓. 6S ✓. Single-IMU = elevated risk on autonomous rig.",
+    "source": "holybro.com"
+   },
+   {
+    "system": "GPS + Compass",
+    "pick": "PRIMARY",
+    "component": "Holybro Micro M10",
+    "specs": "u-blox M10, 4 constellations (GPS+Galileo+GLONASS+BeiDou), built-in compass. ~few-metre accuracy = plenty for waypoints/RTH. Lightest option.",
+    "weight_g": 14,
+    "unit_price": 27.99,
+    "qty": 1,
+    "line_total": 27.99,
+    "compat": "Pixhawk 6C-native (plug & play). UART ✓.",
+    "source": "holybro.com ($27.99)"
+   },
+   {
+    "system": "GPS + Compass",
+    "pick": "backup",
+    "component": "Holybro M10 (full, cased)",
+    "specs": "Same chip + buzzer, safety switch, LED. ~15-18g heavier, convenience features only.",
+    "weight_g": 31,
+    "unit_price": 45,
+    "qty": 1,
+    "line_total": 45,
+    "compat": "Pixhawk 6C-native ✓.",
+    "source": "holybro.com"
+   },
+   {
+    "system": "Battery Cells",
+    "pick": "PRIMARY",
+    "component": "Molicel P42A 21700  (6S2P = 12 cells)",
+    "specs": "4.2Ah, 45A cont/cell. Pack: ~181 Wh, 90A ceiling (peak draw only ~45A). Best Wh/$ (2.52). Long-range champion cell.",
+    "weight_g": 941,
+    "unit_price": 5.99,
+    "qty": 12,
+    "line_total": 71.88,
+    "compat": "6S nominal 22.2V ✓ motors. 90A >> 45A peak ✓. Needs spot-welding + BMS/wiring.",
+    "source": "18650batterystore.com"
+   },
+   {
+    "system": "Battery Cells",
+    "pick": "backup",
+    "component": "Samsung 50S 21700  (6S2P = 12 cells)",
+    "specs": "5.0Ah — MOST energy (~216 Wh) & lightest pack (927g). +19% flight time for +$24. 50A ceiling still > 45A peak.",
+    "weight_g": 927,
+    "unit_price": 7.99,
+    "qty": 12,
+    "line_total": 95.88,
+    "compat": "6S ✓. 50A > 45A peak ✓ (less margin, fine for endurance cruise).",
+    "source": "18650batterystore.com"
+   },
+   {
+    "system": "FPV Camera",
+    "pick": "PRIMARY",
+    "component": "Caddx Ratel 2 (analog)",
+    "specs": "1/1.8\" sensor, 1200TVL, superb low-light/dusk. Pilot's flying feed — INDEPENDENT of Jetson (see & fly home if AI stack crashes).",
+    "weight_g": 9,
+    "unit_price": 35,
+    "qty": 1,
+    "line_total": 35,
+    "compat": "Analog → pairs w/ VTX. 5-25V ✓. Standard 19x19/nano mount.",
+    "source": "caddxfpv.com"
+   },
+   {
+    "system": "FPV Camera",
+    "pick": "budget",
+    "component": "Caddx Ant (analog)",
+    "specs": "Same 1200TVL Caddx sharpness, 165° FOV, 2g. Gives up only dusk low-light vs Ratel. Saves ~$20 + 7g.",
+    "weight_g": 2,
+    "unit_price": 16.5,
+    "qty": 1,
+    "line_total": 16.5,
+    "compat": "Analog → VTX. 5-25V ✓.",
+    "source": "caddxfpv.com (~$15-18)"
+   },
+   {
+    "system": "Perception Camera",
+    "pick": "PRIMARY",
+    "component": "Arducam IMX477 CSI (Jetson)",
+    "specs": "12.3MP, 4-lane MIPI CSI-2, native Jetson Orin kernel driver. Wide 100° FOV version for detection. Feeds YOLO/RF-DETR on Jetson.",
+    "weight_g": 30,
+    "unit_price": 55,
+    "qty": 1,
+    "line_total": 55,
+    "compat": "Jetson Orin Nano dev-kit CSI ✓ (native driver, JetPack-version specific). 22-pin FFC incl.",
+    "source": "arducam.com"
+   },
+   {
+    "system": "Perception Camera",
+    "pick": "budget",
+    "component": "Arducam IMX219 CSI (Jetson)",
+    "specs": "8MP, same native Jetson driver, wide-angle options. Perception downscales to ~640px anyway → megapixels wasted. Barely a compromise.",
+    "weight_g": 15,
+    "unit_price": 22.5,
+    "qty": 1,
+    "line_total": 22.5,
+    "compat": "Jetson Orin Nano CSI ✓ (native). Saves ~$30.",
+    "source": "arducam.com (~$20-25)"
+   },
+   {
+    "system": "Video TX (VTX)",
+    "pick": "PRIMARY",
+    "component": "RushFPV Tank Solo (5.8GHz)",
+    "specs": "Up to 1W+, CNC alu shell = heat sink, pit mode + SmartAudio. ~8W draw at full power (already in flight-time math; dial down to save airtime).",
+    "weight_g": 9,
+    "unit_price": 30,
+    "qty": 1,
+    "line_total": 30,
+    "compat": "Analog 5.8G ✓ Ratel/Ant. SmartAudio→FC ✓. 6S/BEC ✓.",
+    "source": "progressiverc / pyrodrone"
+   },
+   {
+    "system": "Video TX (VTX)",
+    "pick": "backup",
+    "component": "TBS Unify Pro32 HV (5.8GHz)",
+    "specs": "Premium: cleanest signal, accurate power, excellent cooling. 800mW-1W.",
+    "weight_g": 8,
+    "unit_price": 45,
+    "qty": 1,
+    "line_total": 45,
+    "compat": "Analog 5.8G ✓. SmartAudio ✓.",
+    "source": "team-blacksheep.com"
+   },
+   {
+    "system": "RC Receiver",
+    "pick": "PRIMARY",
+    "component": "Happymodel ES900 Dual RX (900MHz ELRS)",
+    "specs": "TRUE diversity (dual SX1276, 2 antennas), TCXO, 1.5g. LQ >95% past 8km vs 2.4G dropping at 3.5km. Punches through trees/walls.",
+    "weight_g": 1.5,
+    "unit_price": 24,
+    "qty": 1,
+    "line_total": 24,
+    "compat": "ExpressLRS ✓ RadioMaster TX16S. UART→FC ✓. 915MHz (US).",
+    "source": "racedayquads / wrekd"
+   },
+   {
+    "system": "RC Receiver",
+    "pick": "backup",
+    "component": "Happymodel EP1 (2.4GHz ELRS)",
+    "specs": "Tiny, light, reliable, low-latency. Fallback when range isn't priority. Cheaper.",
+    "weight_g": 0.4,
+    "unit_price": 17,
+    "qty": 1,
+    "line_total": 17,
+    "compat": "ExpressLRS ✓ TX16S. 2.4G.",
+    "source": "getfpv / amazon"
+   },
+   {
+    "system": "Telemetry Radio",
+    "pick": "PRIMARY",
+    "component": "Holybro SiK V3 (915MHz, 500mW/1W pair)",
+    "specs": "Two-way MAVLink data link FC↔ground station (GPS/voltage/alt + waypoints). High-power = several km to match control/video range. Sold as pair.",
+    "weight_g": 15,
+    "unit_price": 50,
+    "qty": 1,
+    "line_total": 50,
+    "compat": "Pixhawk-native, MAVLink/QGC/PX4 pre-tuned ✓. 915MHz (US). TELEM port ✓.",
+    "source": "holybro.com"
+   },
+   {
+    "system": "Companion Computer",
+    "pick": "(planned)",
+    "component": "NVIDIA Jetson Orin Nano 8GB Dev Kit",
+    "specs": "High-level autonomy + NL commands + perception over MAVLink. ~12W active (in flight math). Upgrade path → Orin NX 16GB.",
+    "weight_g": 180,
+    "unit_price": 249,
+    "qty": 1,
+    "line_total": 249,
+    "compat": "USB-UART adapter to Pixhawk TELEM2 (not GPIO UART). CSI camera ✓.",
+    "source": "nvidia / seeedstudio"
+   }
+  ],
+  "subtotal": 578.33
+ },
+ "cart": {
+  "items": [
+   {
+    "component": "Motor",
+    "link": "Motor and ESP link",
+    "specs": "These are really great outrunners. We've tested this line and they work extremely well. \nThis is 5010-14 360KV   Brushless Motor\n\nFeatures:\n1.Machined aluminum front housing with four fan-style cooling holes that pump air through the motor while it runs.\n2.Rear threaded mounting holes with both 16 mm and 19mm hole spacings fit a variety of applications.\n3.Specially designed NdFeB magnets with high temperature rating for trouble-free operation.\n4.High Temperature 140 C (356 F) rated wire is used for winding the motors to minimize the risk of burning up the motor.\n5.High quality stator plates are epoxy coated on the inner surface to prevent winding shorts. 0.20mm stator plate id used on this motor 5010.\n6.High quality shielded and permanently lubricated ball bearings are used to support the motor shaft in all our motors.\n7.High temperature adhesives are used to secure the stator windings and prevent them from shifting and getting pinched or shorting out .\nMotor size: 50*10mm\nShaft size: 4mm\n\n\n\nWeight: 80g \nKV(rpm/v): 360/750\nBattery: 2-6Li-Po\nESC: 20-40A(Best configuration 30A)\nBest working with props of 12-16\"\n\nBrushess 30A ESC:\nThe newest Brushess 30A ESC brushless version, flight control and perfectly compatible engine\nBEC: NO\nInput: 2-6S lithium battery\nContinuous current: 30A\nInstantaneous current: 40A (10 seconds)\nBEC output: none\nPlug: 3.5mm banana plug\n1 Product Features\n1.1 Multi-rotor-specific program, the throttle response speed is extremely fast, surpassing all kinds of open source software;\n1.2 Firmware optimized for disc motors with excellent motor compatibility;\n1.3 Highly intelligent, self-adapting ability, only retaining the angle setting item (high advance/middle angle), the use is extremely simple;\n1.4 The throttle signal line is a twisted pair cable, which effectively reduces the crosstalk caused by the transmission of signals in the copper wire, making the flight more stable;\n1.5 Up to the throttle signal with a refresh rate up to 621Hz, compatible with various flight controls (Note: the throttle signals over 500Hz are non-standard throttle signals);\n1.6 Using MOSFET-specific driver chips, the performance and stability far exceed the drive circuit built with discrete components;\n1.7 Ultra-low internal resistance MOSFET with strong current resistance.\n\nPackage Includes: (as shown in the Main Photo)"
+   },
+   {
+    "component": "ESC",
+    "link": null,
+    "specs": null
+   },
+   {
+    "component": "Propeller",
+    "link": "https://www.aliexpress.us/item/3256808508291370.html?src=google&src=google&albch=shopping&acnt=179-224-6891&isdl=y&slnk=&plac=&mtctp=&albbt=Google_7_shopping&aff_platform=google&aff_short_key=_oFgTQeV&gclsrc=aw.ds&albagn=888888&ds_e_adid=&ds_e_matchtype=&ds_e_device=c&ds_e_network=x&ds_e_product_group_id=&ds_e_product_id=en3256808508291370&ds_e_product_merchant_id=5566033220&ds_e_product_country=US&ds_e_product_language=en&ds_e_product_channel=online&ds_e_product_store_id=&ds_url_v=2&albcp=23114515373&albag=&isSmbAutoCall=false&needSmbHouyi=false&gad_source=4&gad_campaignid=23118775333&gbraid=0AAAABBR8xIdEJFtPJmV7Erp3vATOBuNwq&gclid=CjwKCAjwifjVBhBKEiwAYx4K9DWaBIiyg_9wcLm1hJeUfIuB5HZHiwe3J_h3bCEpgWE4PSLCwKuY4RoCrTgQAvD_BwE&gatewayAdapt=glo2usa",
+    "specs": "g"
+   },
+   {
+    "component": "Buzzer",
+    "link": null,
+    "specs": null
+   },
+   {
+    "component": "GPS",
+    "link": null,
+    "specs": null
+   },
+   {
+    "component": "Flight Controller",
+    "link": "https://holybro.com/collections/flight-controllers/products/kakute-h7-v2",
+    "specs": null
+   },
+   {
+    "component": "Compass",
+    "link": "Skip",
+    "specs": null
+   },
+   {
+    "component": "Battery",
+    "link": "OVONIC 6S LiPo Battery 5000mAh 22.2V 130C RC Battery with XT60 Connector",
+    "specs": null
+   },
+   {
+    "component": "Frame",
+    "link": "selfdesign",
+    "specs": null
+   },
+   {
+    "component": "FPV Camera",
+    "link": "skip ( until the drone start flying safely)",
+    "specs": null
+   },
+   {
+    "component": "Perception Camera",
+    "link": "skip ( until the drone start flying safely)",
+    "specs": null
+   },
+   {
+    "component": "Video Transmitter (VTX)",
+    "link": "skip ( until the drone start flying safely)",
+    "specs": null
+   },
+   {
+    "component": "RC Receiver rX",
+    "link": "https://www.getfpv.com/radiomaster-nomad-dual-1w-gemini-xrossband-expresslrs-module.html?glid=CjwKCAjwrbfWBhAeEiwAc2e6PnXWrytwqx28rOA6ijv6ADIsZrlkb7t3EhAgM6zDktg6y9ug1cgzaBoC3JUQAvD_BwE&gc_id=21805212384&g_special_campaign=true&gad_source=1&gad_campaignid=21805212384&gbraid=0AAAAAD8cN5KLjjgtst7YlpYWeRttrgAMV&gclid=CjwKCAjwrbfWBhAeEiwAc2e6PnXWrytwqx28rOA6ijv6ADIsZrlkb7t3EhAgM6zDktg6y9ug1cgzaBoC3JUQAvD_BwE",
+    "specs": null
+   },
+   {
+    "component": "Telemetry Radio tx",
+    "link": "https://www.readymaderc.com/products/details/85685-radiomaster-boxer-radio-control-system-expresslrs?srsltid=AU7gw4W8NwTikSoYhHfrSav1Grzz7XtlWACKgMlfXIS0euYhpXbqc5_Ij7M",
+    "specs": null
+   },
+   {
+    "component": "Companion Computer",
+    "link": "skip for right now",
+    "specs": null
+   },
+   {
+    "component": "Power Distribution / BEC",
+    "link": "pow distrubtion board",
+    "specs": null
+   },
+   {
+    "component": "Antennas",
+    "link": null,
+    "specs": null
+   },
+   {
+    "component": "Wiring & Connectors",
+    "link": null,
+    "specs": null
+   }
+  ]
+ },
+ "motor": {
+  "points": [
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 14.4,
+    "pull": 1840.0,
+    "power": 319.7,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 12.5,
+    "pull": 1740.0,
+    "power": 277.5,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 11.5,
+    "pull": 1640.0,
+    "power": 255.3,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 11.8,
+    "pull": 1600.0,
+    "power": 218.3,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 14.4,
+    "pull": 1600.0,
+    "power": 266.4,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 9.7,
+    "pull": 1370.0,
+    "power": 179.5,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 9.0,
+    "pull": 1270.0,
+    "power": 166.5,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 10.8,
+    "pull": 1260.0,
+    "power": 159.8,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 6.3,
+    "pull": 1200.0,
+    "power": 139.9,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 6.7,
+    "pull": 1200.0,
+    "power": 148.7,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 8.5,
+    "pull": 1170.0,
+    "power": 125.8,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 5.4,
+    "pull": 1000.0,
+    "power": 99.9,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 5.9,
+    "pull": 1000.0,
+    "power": 109.2,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 5.3,
+    "pull": 1000.0,
+    "power": 117.7,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 7.1,
+    "pull": 990.0,
+    "power": 105.1,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 6.5,
+    "pull": 910.0,
+    "power": 96.2,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 7.4,
+    "pull": 860.0,
+    "power": 82.1,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 4.7,
+    "pull": 800.0,
+    "power": 69.6,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 5.1,
+    "pull": 800.0,
+    "power": 75.5,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 4.2,
+    "pull": 800.0,
+    "power": 77.7,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 4.4,
+    "pull": 800.0,
+    "power": 81.4,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 5.7,
+    "pull": 760.0,
+    "power": 63.3,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 4.7,
+    "pull": 630.0,
+    "power": 52.2,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 2.3,
+    "pull": 600.0,
+    "power": 51.1,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 3.5,
+    "pull": 600.0,
+    "power": 51.8,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 4.3,
+    "pull": 600.0,
+    "power": 47.7,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 2.2,
+    "pull": 600.0,
+    "power": 48.8,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 2.5,
+    "pull": 600.0,
+    "power": 55.5,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 3.5,
+    "pull": 600.0,
+    "power": 51.8,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 4.3,
+    "pull": 580.0,
+    "power": 47.7,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 22.2,
+    "i0": 0.4,
+    "rpm": null,
+    "i": 1.9,
+    "pull": 500.0,
+    "power": 42.2,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 2.0,
+    "pull": 500.0,
+    "power": 37.0,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 2.1,
+    "pull": 500.0,
+    "power": 38.9,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 2.4,
+    "pull": 400.0,
+    "power": 26.6,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 2.5,
+    "pull": 400.0,
+    "power": 27.8,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 1.6,
+    "pull": 400.0,
+    "power": 29.6,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 18.5,
+    "i0": 0.4,
+    "rpm": 6660.0,
+    "i": 1.6,
+    "pull": 400.0,
+    "power": 29.6,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 2.3,
+    "pull": 400.0,
+    "power": 25.5,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 1.8,
+    "pull": 400.0,
+    "power": 26.6,
+    "prop": "CF17x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 1.8,
+    "pull": 400.0,
+    "power": 26.6,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 1.3,
+    "pull": 300.0,
+    "power": 19.2,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 14.8,
+    "i0": 0.3,
+    "rpm": 5328.0,
+    "i": 1.4,
+    "pull": 300.0,
+    "power": 20.7,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 1.5,
+    "pull": 300.0,
+    "power": 16.7,
+    "prop": "CF18x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 1.0,
+    "pull": 200.0,
+    "power": 11.1,
+    "prop": "CF16x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 1.0,
+    "pull": 200.0,
+    "power": 11.1,
+    "prop": "CF15x5.5"
+   },
+   {
+    "v": 11.1,
+    "i0": 0.3,
+    "rpm": 3996.0,
+    "i": 1.0,
+    "pull": 200.0,
+    "power": 11.1,
+    "prop": "CF17x5.5"
+   }
+  ]
+ },
+ "efficiency": {
+  "choice": {
+   "v": 22.2,
+   "prop": "CF16x5.5",
+   "note": "my choice"
+  },
+  "best": {
+   "v": 18.5,
+   "prop": "CF17x5.5"
+  }
+ }
+}

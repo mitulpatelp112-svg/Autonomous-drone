@@ -1,0 +1,904 @@
+<title>Drone Build Bench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench readout. Status strip on top, goal gauges, then schematic, model, parts and tools as stacked panels. */
+:root {
+  --bg: #eceff0; --panel: #ffffff; --ink: #151b1e; --muted: #5b676b; --line: #d2d9db; --sunk: #f5f7f8;
+  --accent: #0d6b7a; --accent-ink: #ffffff;
+  --pwr: #c4313a; --sig: #a35f00; --data: #2a6fc4; --i2c: #7a4fc9;
+  --ok: #1d7a46; --ok-bg: #e3f2e9; --warn: #9a5b00; --warn-bg: #fbf0dc; --bad: #b8282d; --bad-bg: #fae4e4; --info: #2a63a6; --info-bg: #e3edf8;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --f-display: "Chakra Petch", "Bahnschrift", "Segoe UI", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
+  --accent: #3eb1c2; --accent-ink: #062126;
+  --pwr: #ef5b61; --sig: #e3a13c; --data: #5ea3f0; --i2c: #a98bee;
+  --ok: #4cc27f; --ok-bg: #12291d; --warn: #e3a63c; --warn-bg: #2d2412; --bad: #f06666; --bad-bg: #321617; --info: #6aa9e8; --info-bg: #142336;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
+  --accent: #3eb1c2; --accent-ink: #062126;
+  --pwr: #ef5b61; --sig: #e3a13c; --data: #5ea3f0; --i2c: #a98bee;
+  --ok: #4cc27f; --ok-bg: #12291d; --warn: #e3a63c; --warn-bg: #2d2412; --bad: #f06666; --bad-bg: #321617; --info: #6aa9e8; --info-bg: #142336;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: .01em; }
+h2 { font-size: 1.25rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 500 .72rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+
+/* status strip */
+.strip { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; padding-bottom: 18px; border-bottom: 2px solid var(--ink); }
+.strip .title { display: grid; gap: 6px; min-width: 0; }
+.mission { color: var(--muted); max-width: 70ch; font-size: .9rem; }
+.sync { display: grid; gap: 8px; justify-items: end; }
+.sync .meta { display: grid; grid-template-columns: auto auto; gap: 2px 10px; font-size: .78rem; color: var(--muted); }
+.sync .meta b { font-weight: 500; color: var(--ink); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+button { font: 600 .9rem/1 var(--f-display); letter-spacing: .03em; border-radius: 6px; padding: 10px 16px; cursor: pointer; border: 1.5px solid var(--ink); background: var(--panel); color: var(--ink); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:disabled { opacity: .55; cursor: progress; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.status-line { font-size: .82rem; max-width: 46ch; text-align: right; }
+.status-line[data-tone="bad"] { color: var(--bad); }
+.status-line[data-tone="ok"] { color: var(--ok); }
+
+/* gauges */
+.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.gauge { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; border-top: 4px solid var(--line); }
+.gauge[data-sev="ok"] { border-top-color: var(--ok); }
+.gauge[data-sev="warn"] { border-top-color: var(--warn); }
+.gauge[data-sev="bad"] { border-top-color: var(--bad); }
+.gauge .val { font: 600 1.9rem/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.gauge .val small { font-size: .9rem; color: var(--muted); font-weight: 500; }
+.gauge .vs { font-size: .82rem; color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; justify-content: space-between; }
+
+/* pills */
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 600 .7rem/1 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 4px; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--ok); background: var(--ok-bg); }
+.pill.warn { color: var(--warn); background: var(--warn-bg); }
+.pill.bad { color: var(--bad); background: var(--bad-bg); }
+.pill.info { color: var(--info); background: var(--info-bg); }
+.pill.off { color: var(--muted); background: var(--sunk); }
+
+/* findings */
+.findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.findings li { display: grid; grid-template-columns: 92px 1fr; gap: 4px 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.findings li:first-child { border-top: 0; }
+.findings .area { font: 500 .72rem/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.findings .t { font-weight: 600; }
+.findings .d { color: var(--muted); font-size: .9rem; max-width: 78ch; }
+.verify { font: 500 .7rem/1 var(--f-mono); color: var(--warn); border: 1px dashed currentColor; padding: 2px 5px; border-radius: 3px; margin-left: 6px; white-space: nowrap; }
+.filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter button { font-size: .75rem; padding: 6px 10px; border-width: 1px; }
+.filter button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+
+/* schematic */
+.scroll { overflow-x: auto; min-width: 0; }
+svg text { font-family: var(--f-mono); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .8rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 0; border-top: 3px solid; display: inline-block; }
+
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th { text-align: left; font: 500 .7rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding: 8px 10px; border-bottom: 1.5px solid var(--ink); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+tr.ghost td { color: var(--muted); }
+
+/* model */
+.model { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 22px; }
+.inputs { display: grid; gap: 10px; align-content: start; }
+.inputs label { display: grid; grid-template-columns: 1fr 86px; align-items: center; gap: 10px; font-size: .85rem; }
+.inputs input, .inputs select { font: 500 .88rem var(--f-mono); padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--sunk); color: var(--ink); width: 100%; box-sizing: border-box; }
+.inputs .grp { font: 500 .7rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--line); }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 18px; }
+.readout { align-items: start; }
+.readout div { display: grid; gap: 2px; align-content: start; }
+.readout b { font: 600 1.15rem/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+.chart-wrap { position: relative; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--panel); font: 500 .78rem/1.4 var(--f-mono); padding: 6px 9px; border-radius: 5px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+
+.cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tools li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; font-size: .9rem; }
+.tools input { margin-top: 4px; accent-color: var(--accent); }
+.tools .why { color: var(--muted); font-size: .82rem; display: block; }
+
+.ask-out { white-space: pre-wrap; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: .9rem; max-height: 520px; overflow: auto; }
+.empty { padding: 40px 0; text-align: center; color: var(--muted); }
+footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
+
+@media (max-width: 760px) {
+  .model { grid-template-columns: 1fr; }
+  .sync { justify-items: start; }
+  .btns { justify-content: flex-start; }
+  .status-line { text-align: left; }
+  .findings li { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gauge, .panel { transition: border-color .3s; }
+}
+</style>
+
+<div class="wrap">
+  <header class="strip">
+    <div class="title">
+      <span class="eyebrow" id="file-name">Excel build sheet</span>
+      <h1 id="build-title">Drone build bench</h1>
+      <p class="mission" id="mission">Loading your build sheet…</p>
+    </div>
+    <div class="sync">
+      <div class="meta">
+        <span>Synced</span><b id="synced">–</b>
+        <span>Excel last saved</span><b id="modified">–</b>
+      </div>
+      <div class="btns">
+        <button id="reload-btn" type="button" title="Re-read the latest synced data without pulling from Excel">Reload</button>
+        <button id="update-btn" class="primary" type="button">Update from Excel</button>
+      </div>
+      <p class="status-line muted" id="status" aria-live="polite">Update pulls your Excel file again and rebuilds this page. It never edits the Excel file.</p>
+    </div>
+  </header>
+
+  <section aria-labelledby="goal-h" style="display:grid;gap:12px">
+    <div class="panel-head"><h2 id="goal-h">Do you meet your goal?</h2><span class="small muted" id="goal-note"></span></div>
+    <div class="gauges" id="gauges"><div class="empty">Waiting for data…</div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="find-h">
+    <div class="panel-head">
+      <h2 id="find-h">Compatibility check</h2>
+      <div class="filter" id="find-filter" role="group" aria-label="Filter findings"></div>
+    </div>
+    <ul class="findings" id="findings"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="wire-h">
+    <div class="panel-head"><h2 id="wire-h">Wiring</h2><span class="small muted">Drawn from the parts in your cart. Dashed boxes are missing; faded boxes are skipped for now.</span></div>
+    <div class="legend">
+      <span><i style="border-color:var(--pwr)"></i>Battery power</span>
+      <span><i style="border-color:var(--sig)"></i>Motor signal</span>
+      <span><i style="border-color:var(--data)"></i>Serial / UART</span>
+      <span><i style="border-color:var(--i2c);border-top-style:dashed"></i>I²C (compass)</span>
+    </div>
+    <div class="scroll" id="schematic"></div>
+    <div class="scroll"><table id="wire-table"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="model-h">
+    <div class="panel-head"><h2 id="model-h">Flight-time model</h2><span class="small muted">Uses your Motor sheet's thrust test data. Grey fields are estimates you can change.</span></div>
+    <div class="model">
+      <div class="inputs" id="inputs"></div>
+      <div style="display:grid;gap:16px;min-width:0">
+        <div class="readout" id="readout"></div>
+        <div class="chart-wrap scroll" id="chart"></div>
+        <div class="legend" id="chart-legend"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="plan-h">
+    <div class="panel-head"><h2 id="plan-h">Cart vs master plan</h2><span class="small muted">Your "cart" sheet compared with the primary picks on "Master Build Sheet".</span></div>
+    <div class="scroll"><table id="plan-table"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="tools-h">
+    <div class="panel-head"><h2 id="tools-h">Tools and equipment</h2><span class="small muted">Ticks are saved in this browser only.</span></div>
+    <div class="cols2" id="tools"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="next-h">
+    <div class="panel-head"><h2 id="next-h">What to do next</h2></div>
+    <ol id="next" style="margin:0;padding-left:1.3em;display:grid;gap:8px"></ol>
+  </section>
+
+  <section class="panel" aria-labelledby="ask-h" id="ask-panel">
+    <div class="panel-head"><h2 id="ask-h">Ask Claude about this build</h2>
+      <button id="ask-btn" type="button">Review my build</button></div>
+    <p class="small muted">Sends the synced sheet and the checks above to Claude for a written second opinion. Nothing is sent until you press the button.</p>
+    <div class="ask-out" id="ask-out" hidden></div>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+// Set when the scheduled "refresh" task is created; the Update button fires it.
+const TRIGGER_ID = "";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (n, d = 0) => (n == null || !isFinite(n) ? "–" : Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+let DATA = null;
+let INPUTS = {};
+let FILTER = "issues";
+
+/* ---------- reference knowledge for parts named in the sheet ---------- */
+// verify:true marks claims that should be checked against the product manual.
+const KB = [
+  { re: /nomad/i, name: "RadioMaster Nomad (ELRS TX module)", kind: "tx-module", weight: 0,
+    notes: [{ sev: "bad", t: "Nomad is a transmitter module, not a receiver",
+      d: "It plugs into the module bay of your radio and sends the control link. The drone still needs an ExpressLRS receiver wired to the flight controller. If you keep the Nomad, pick a receiver that matches its band (a Gemini/Xrossband-capable RX gets the most out of it)." }] },
+  { re: /boxer/i, name: "RadioMaster Boxer (radio)", kind: "radio",
+    notes: [{ sev: "warn", t: "Boxer is your handheld radio, not a telemetry radio",
+      d: "It is the stick controller and already has ExpressLRS built in, so the Nomad is an optional range upgrade. A telemetry link to a ground station is a separate item: either a SiK radio pair or ExpressLRS MAVLink telemetry.", verify: true },
+      { sev: "info", t: "Check the Nomad fits the Boxer's module bay", d: "Confirm the bay size on both product pages before ordering.", verify: true }] },
+  { re: /kakute[-\s]?h7[-\s]?v2/i, name: "Holybro Kakute H7 v2", kind: "fc",
+    notes: [{ sev: "warn", t: "Kakute H7 v2 has a single IMU",
+      d: "Your master sheet already flags this as higher risk for autonomous flight. It is fine for first flights; the Pixhawk 6C (your plan's primary) adds a redundant IMU when you add autonomy." },
+      { sev: "info", t: "Kakute uses small JST-SH connectors", d: "Pixhawk-style GPS and telemetry cables (JST-GH) need an adapter cable or re-pinning. The \"plug & play\" note for the M10 GPS on your master sheet assumes a Pixhawk.", verify: true }] },
+  { re: /pixhawk\s*6c/i, name: "Holybro Pixhawk 6C", kind: "fc", notes: [] },
+  { re: /ovonic/i, name: "OVONIC 6S LiPo", kind: "battery", notes: [] },
+];
+const kbFor = (text) => KB.find((k) => k.re.test(text || ""));
+
+/* ---------- reading the sheet ---------- */
+const ROLES = [
+  ["motor", /motor/i], ["esc", /\besc\b/i], ["prop", /propell|\bprop\b/i], ["buzzer", /buzzer/i],
+  ["gps", /\bgps\b/i], ["fc", /flight controller|\bfc\b/i], ["compass", /compass/i], ["battery", /battery/i],
+  ["frame", /frame/i], ["fpv", /fpv cam/i], ["percam", /perception/i], ["vtx", /vtx|video trans/i],
+  ["rx", /receiver|\brx\b/i], ["telem", /telemetry/i], ["companion", /companion/i], ["pdb", /power dist|\bbec\b|\bpdb\b/i],
+  ["antenna", /antenna/i], ["wiring", /wiring|connector/i],
+];
+const roleOf = (name) => (ROLES.find(([, re]) => re.test(name || "")) || ["other"])[0];
+
+function niceName(text) {
+  if (!text) return "";
+  const k = kbFor(text);
+  if (k) return k.name;
+  const url = text.match(/https?:\/\/[^\s]+/);
+  if (!url) return text;
+  try {
+    const u = new URL(url[0]);
+    const host = u.hostname.replace(/^www\./, "");
+    if (/aliexpress/.test(host)) return "AliExpress listing";
+    const slug = u.pathname.split("/").filter(Boolean).pop() || host;
+    return slug.replace(/\.html?$/, "").replace(/^\d+-/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) + " (" + host + ")";
+  } catch { return text; }
+}
+const linkOf = (text) => { const m = (text || "").match(/https?:\/\/[^\s]+/); return m ? m[0].split("?")[0] : null; };
+
+function cartParts(d) {
+  const parts = {};
+  for (const it of d.cart?.items || []) {
+    const role = roleOf(it.component);
+    const text = it.link || "";
+    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : "chosen";
+    parts[role] = { role, label: it.component, text, specs: it.specs || "", status, name: status === "chosen" ? niceName(text) : "", url: linkOf(text) };
+  }
+  return parts;
+}
+
+const rx = (s, re, f = Number) => { const m = (s || "").match(re); return m ? f(m[1]) : null; };
+const rx2 = (s, re) => { const m = (s || "").match(re); return m ? [Number(m[1]), Number(m[2])] : null; };
+
+function readSpecs(parts) {
+  const ms = (parts.motor?.specs || "") + " " + (parts.motor?.text || "");
+  const escText = (parts.esc?.specs || "") + " " + (parts.esc?.text || "") + " " + ms;
+  const bt = (parts.battery?.text || "") + " " + (parts.battery?.specs || "");
+  const cells = rx2(ms, /(\d)\s*-\s*(\d)\s*(?:S\b|Li)/i);
+  const props = rx2(ms, /props?\s+of\s+(\d+)\s*-\s*(\d+)/i);
+  const motorEsc = rx2(ms, /ESC:\s*(\d+)\s*-\s*(\d+)\s*A/i);
+  const escIn = rx2(escText, /Input:\s*(\d)\s*-\s*(\d)\s*S/i);
+  return {
+    motor: {
+      model: rx(ms, /(\d{4}(?:-\d+)?)\s+\d+\s*KV/i, String) || rx(ms, /\b(\d{4})\b/, String),
+      kv: rx(ms, /(\d+)\s*KV/i), weight: rx(ms, /Weight:\s*(\d+)\s*g/i), shaft: rx(ms, /Shaft size:\s*(\d+)\s*mm/i),
+      cellsMin: cells?.[0], cellsMax: cells?.[1], propMin: props?.[0], propMax: props?.[1],
+      escMin: motorEsc?.[0], escMax: motorEsc?.[1],
+    },
+    esc: {
+      found: /\bESC\b/i.test(escText) && /continuous current/i.test(escText),
+      cont: rx(escText, /Continuous current:\s*(\d+)\s*A/i), burst: rx(escText, /Instantaneous current:\s*(\d+)\s*A/i),
+      noBec: /BEC:\s*NO|BEC output:\s*none/i.test(escText), cellsMin: escIn?.[0], cellsMax: escIn?.[1],
+      hz: rx(escText, /up to\s*(\d+)\s*Hz/i), bullet: rx(escText, /(\d(?:\.\d)?)\s*mm\s*banana/i, String),
+      dshot: /dshot/i.test(escText), firmware: (escText.match(/AM32|BLHeli_?32|BLHeli_?S|Bluejay/i) || [null])[0],
+    },
+    battery: {
+      cells: rx(bt, /(\d)S\b/i), mah: rx(bt, /(\d{3,5})\s*mAh/i), c: rx(bt, /(\d+)\s*C\b/), volts: rx(bt, /([\d.]+)\s*V\b/i),
+      conn: (bt.match(/XT\s?90|XT\s?60|XT\s?30|EC5|AS150/i) || [null])[0]?.replace(/\s/g, "").toUpperCase(),
+      chem: /li-?ion|21700|18650/i.test(bt) ? "Li-ion" : /lipo|li-po/i.test(bt) ? "LiPo" : null,
+    },
+  };
+}
+
+function parseMission(m) {
+  return {
+    minutes: rx(m, /(\d+)\s*min/i), payload: rx(m, /(\d+)\s*g\s*payload/i),
+    auwKg: rx(m, /AUW[^\d]{0,20}([\d.]+)\s*kg/i), pack: (m || "").match(/\d+S\d*P?\s*[\w-]*/)?.[0] || null,
+  };
+}
+
+const masterPick = (d, sys, pick = /primary|planned/i) =>
+  (d.master?.items || []).find((i) => (i.system || "").toLowerCase().includes(sys) && pick.test(i.pick || ""));
+
+/* ---------- motor test data ---------- */
+function curvesAt(d, v) {
+  const by = {};
+  for (const p of d.motor?.points || []) if (p.v === v) (by[p.prop] ||= []).push(p);
+  for (const k in by) by[k].sort((a, b) => a.pull - b.pull);
+  return by;
+}
+function currentFor(curve, pull) {
+  if (!curve?.length) return null;
+  const pts = [{ pull: 0, i: curve[0].i0 ?? 0 }, ...curve];
+  for (let j = 1; j < pts.length; j++) {
+    if (pull <= pts[j].pull) {
+      const a = pts[j - 1], b = pts[j];
+      return a.i + (b.i - a.i) * (pull - a.pull) / (b.pull - a.pull || 1);
+    }
+  }
+  const a = pts[pts.length - 2], b = pts[pts.length - 1];
+  return b.i + (b.i - a.i) * (pull - b.pull) / (b.pull - a.pull || 1); // beyond test data: extrapolated
+}
+const propInches = (p) => rx(p, /(\d+(?:\.\d+)?)\s*x/i);
+// Rule-of-thumb continuous ratings for short silicone leads in a ventilated airframe.
+const AWG = [[10, 20], [15, 18], [22, 16], [35, 14], [60, 12], [90, 10], [Infinity, 8]];
+const gauge = (amps) => AWG.find(([a]) => amps <= a)[1];
+const CONN_A = { XT30: 30, XT60: 60, XT90: 90, EC5: 120, AS150: 150 };
+
+/* ---------- the analysis ---------- */
+function analyse(d) {
+  const parts = cartParts(d);
+  const s = readSpecs(parts);
+  const mission = parseMission(d.master?.mission);
+  const eff = d.efficiency || {};
+  const volts = [...new Set((d.motor?.points || []).map((p) => p.v))].sort((a, b) => a - b);
+  const battV = s.battery.cells ? +(s.battery.cells * 3.7).toFixed(1) : null;
+  const v = INPUTS.v ?? (eff.choice?.v ?? (volts.includes(battV) ? battV : volts.at(-1)));
+  const curves = curvesAt(d, v);
+  const prop = INPUTS.prop && curves[INPUTS.prop] ? INPUTS.prop : (eff.choice?.prop && curves[eff.choice.prop] ? eff.choice.prop : Object.keys(curves)[0]);
+  const curve = curves[prop] || [];
+
+  const findings = [];
+  const add = (sev, area, t, dd, verify) => findings.push({ sev, area, t, d: dd, verify });
+
+  // weights (g): sheet values where they exist, editable estimates otherwise
+  const fcRow = (d.master?.items || []).find((i) => parts.fc?.text && i.component && kbFor(parts.fc.text)?.re.test(i.component));
+  const gpsPlan = masterPick(d, "gps");
+  const capWh = s.battery.mah && battV ? s.battery.mah / 1000 * battV : null;
+  const defaults = {
+    motorG: s.motor.weight ?? 80, escG: 28, propG: 25, fcG: fcRow?.weight_g ?? 10, gpsG: gpsPlan?.weight_g ?? 15, rxG: 3,
+    battG: capWh ? Math.round(capWh / 0.145) : 750, frameG: 550, wiringG: 120, payloadG: mission.payload ?? 200,
+    usable: 80, avionicsW: 5, mah: s.battery.mah ?? 5000,
+  };
+  const I = {}; for (const k in defaults) I[k] = INPUTS[k] ?? defaults[k];
+  const auw = 4 * I.motorG + 4 * I.escG + 4 * I.propG + I.fcG + I.gpsG + I.rxG + I.battG + I.frameG + I.wiringG + I.payloadG;
+  const hoverPull = auw / 4;
+  const iHover = currentFor(curve, hoverPull);
+  const top = curve.at(-1);
+  const vNom = v;
+  const iTotalHover = iHover != null ? 4 * iHover + I.avionicsW / vNom : null;
+  const minutes = iTotalHover ? (I.mah / 1000) * (I.usable / 100) / iTotalHover * 60 : null;
+  const tw = top ? 4 * top.pull / auw : null;
+  const iMaxTotal = top ? 4 * top.i + I.avionicsW / vNom : null;
+  const hoverPct = top ? hoverPull / top.pull * 100 : null;
+  const outOfData = top && hoverPull > top.pull;
+  // phase 2: add the planned Jetson + perception camera from the master sheet
+  const jet = masterPick(d, "companion"), cam = masterPick(d, "perception");
+  const addG = (jet?.weight_g || 0) + (cam?.weight_g || 0);
+  const jetW = rx(jet?.specs, /~?(\d+)\s*W\b/i) ?? 12;
+  const iHover2 = currentFor(curve, (auw + addG) / 4);
+  const minutes2 = iHover2 != null ? (I.mah / 1000) * (I.usable / 100) / (4 * iHover2 + (I.avionicsW + (jet ? jetW : 0)) / vNom) * 60 : null;
+  const model = { v, prop, volts, curves, curve, I, defaults, auw, hoverPull, iHover, top, minutes, tw, iMaxTotal, hoverPct, minutes2, addG, jet, cam, jetW, outOfData };
+
+  /* --- checks --- */
+  const P = (r) => parts[r] || { status: "missing", label: r };
+
+  // mission vs cart
+  const planProp = masterPick(d, "propeller");
+  const planIn = propInches(planProp?.component || "") || rx(d.master?.title, /(\d+)-?\s*inch/i);
+  const cartIn = propInches(prop);
+  if (planIn && cartIn && Math.abs(planIn - cartIn) >= 2)
+    add("warn", "Mission", `Your cart is a ${cartIn}-inch build, but the master sheet is a ${planIn}-inch plan`,
+      `The master sheet's mission line (AUW ${mission.auwKg ?? "?"} kg, ${mission.pack ?? "?"} pack, ${planProp?.component ?? "7-inch props"}) describes a different aircraft from the 5010 motors and ${prop} props in your cart. The goal numbers below use your cart, judged against the mission targets for endurance and payload.`);
+
+  // motor ↔ battery
+  if (s.battery.cells && s.motor.cellsMax) {
+    const ok = s.battery.cells >= (s.motor.cellsMin ?? 1) && s.battery.cells <= s.motor.cellsMax;
+    add(ok ? "ok" : "bad", "Power", `${s.battery.cells}S battery ${ok ? "is within" : "is outside"} the motor's ${s.motor.cellsMin}–${s.motor.cellsMax}S rating`,
+      ok && s.battery.cells === s.motor.cellsMax ? "You are at the top of the motor's voltage range. That suits the low-KV motor but leaves no room for a higher-voltage pack." : "");
+  }
+  if (s.battery.cells && s.esc.cellsMax) {
+    const ok = s.battery.cells <= s.esc.cellsMax;
+    add(ok ? "ok" : "bad", "Power", `${s.battery.cells}S battery ${ok ? "is within" : "exceeds"} the ESC's ${s.esc.cellsMin}–${s.esc.cellsMax}S input`, "");
+  }
+  if (battV && Math.abs(battV - v) > 0.5)
+    add("warn", "Power", `Model voltage (${v} V) does not match the ${s.battery.cells}S battery (${battV} V nominal)`, "Switch the model voltage to match the pack you are buying.");
+
+  // prop ↔ motor
+  if (cartIn && s.motor.propMax) {
+    const ok = cartIn >= (s.motor.propMin ?? 0) && cartIn <= s.motor.propMax;
+    add(ok ? "ok" : "warn", "Props", `${prop} props ${ok ? "are inside" : "are outside"} the motor's ${s.motor.propMin}–${s.motor.propMax}" range`,
+      eff.choice ? `This is the combo marked "${eff.choice.note}" on your Efficiency sheet. Its best-balance pick is ${eff.best?.v} V · ${eff.best?.prop}.` : "");
+  }
+  if (P("prop").status === "chosen")
+    add("warn", "Props", "Confirm the prop listing matches your chosen size and the motor's prop mount",
+      `The prop row links to ${P("prop").name || "a listing"} without a size. Check it is ${prop} and that its hub fits the ${s.motor.model || "motor"}'s prop adapter${s.motor.shaft ? ` (${s.motor.shaft} mm shaft)` : ""}. Buy CW and CCW pairs, plus spares.`);
+
+  // ESC
+  if (!s.esc.found && P("esc").status !== "chosen")
+    add("bad", "ESC", "No ESC chosen", "Pick four ESCs (or a 4-in-1) rated for 6S with at least 30% headroom over the motor's peak current.");
+  else if (s.esc.cont && top) {
+    const head = s.esc.cont / top.i;
+    add(head >= 1.3 ? "ok" : head >= 1.05 ? "warn" : "bad", "ESC",
+      `ESC ${s.esc.cont} A continuous vs ${fmt(top.i, 1)} A peak per motor (${fmt(head, 1)}× headroom)`,
+      `Peak is the highest-thrust point on your Motor sheet for ${v} V · ${prop}.${s.motor.escMin ? ` The motor listing recommends ${s.motor.escMin}–${s.motor.escMax} A ESCs.` : ""}`);
+  }
+  if (P("esc").status === "missing" && s.esc.found)
+    add("info", "ESC", "ESC row is empty, but the motor listing includes a 30 A ESC", "Make sure you are ordering 4 ESCs from that listing (one per motor), and fill in the ESC row so the sheet stays accurate.");
+  if (s.esc.noBec)
+    add("warn", "ESC", "ESCs have no BEC", "Nothing on the ESCs makes 5 V. Power the flight controller from the battery through the power distribution board, and use a board or BEC with a 5 V output for the receiver, GPS and buzzer. Check the flight controller's input voltage range covers 6S.", true);
+  if (s.esc.found && !s.esc.dshot && s.esc.hz)
+    add("info", "ESC", `ESC accepts PWM-class throttle signals (up to ${s.esc.hz} Hz); no DShot or telemetry listed`,
+      "In ArduPilot set the motor output type to normal PWM or OneShot125, calibrate the ESC throttle range, and use a throttle-based harmonic notch filter since there is no ESC RPM telemetry.", true);
+
+  // battery and connector current
+  if (iMaxTotal && s.battery.conn && CONN_A[s.battery.conn]) {
+    const r = iMaxTotal / CONN_A[s.battery.conn];
+    add(r <= 0.8 ? "ok" : r <= 1 ? "warn" : "bad", "Power",
+      `Full-throttle draw ≈ ${fmt(iMaxTotal, 0)} A on an ${s.battery.conn} (≈${CONN_A[s.battery.conn]} A rated)`,
+      r > 0.8 ? "Short full-throttle bursts are fine, but an XT90 and 10–12 AWG battery leads give more margin for a heavy-lift build." : "");
+  }
+  if (iMaxTotal && s.battery.c && s.battery.mah)
+    add("ok", "Power", `Battery can deliver ${fmt(s.battery.c * s.battery.mah / 1000, 0)} A on paper; peak need is ≈${fmt(iMaxTotal, 0)} A`, "Manufacturer C ratings are usually optimistic, but the margin here is large.");
+  if (mission.pack && s.battery.chem && /li-?ion/i.test(d.master?.mission || "") && s.battery.chem === "LiPo")
+    add("info", "Power", `Cart uses a LiPo pack; the mission line plans a ${mission.pack} pack`,
+      `${fmt(capWh, 0)} Wh LiPo vs the plan's Li-ion pack. LiPo is simpler for first flights (no spot welding or BMS). Revisit Li-ion once the airframe flies, for more endurance per gram.`);
+
+  // flight controller
+  const fcK = kbFor(P("fc").text);
+  if (P("fc").status !== "chosen") add("bad", "Flight control", "No flight controller chosen", "");
+  for (const n of fcK?.notes || []) add(n.sev, "Flight control", n.t, n.d, n.verify);
+
+  // GPS / compass for autonomy
+  if (P("gps").status !== "chosen")
+    add("bad", "Navigation", "No GPS chosen, so autonomous flight is not possible yet",
+      `Waypoints, position hold and return-to-launch need GPS. Your master sheet's pick is ${gpsPlan?.component ?? "a u-blox M10 module"}${gpsPlan?.weight_g ? ` (${gpsPlan.weight_g} g, $${gpsPlan.unit_price})` : ""}, which includes a compass, so it would also fill the Compass row.`);
+  if (P("compass").status !== "chosen" && !(P("gps").status === "chosen" && /m10|compass/i.test(P("gps").text)))
+    add("warn", "Navigation", "Compass is skipped",
+      "OK for first manual flights. For autonomous modes, use a GPS module with a built-in compass (one item instead of two).", true);
+
+  // radio link
+  const rxK = kbFor(P("rx").text);
+  if (P("rx").status !== "chosen") add("bad", "Radio", "No receiver chosen", "");
+  for (const n of rxK?.notes || []) add(n.sev, "Radio", n.t, n.d, n.verify);
+  const tK = kbFor(P("telem").text);
+  for (const n of tK?.notes || []) add(n.sev, "Radio", n.t, n.d, n.verify);
+
+  // frame
+  if (cartIn) {
+    const wb = Math.ceil(cartIn * 25.4 * 1.1 * Math.SQRT2 / 10) * 10;
+    add(P("frame").status === "chosen" ? "info" : "bad", "Frame",
+      `For ${cartIn}" props your self-designed frame needs ≥ ${wb} mm motor-to-motor diagonal`,
+      `That keeps neighbouring prop tips about 10% of a prop diameter apart. ${s.motor.model || "The motors"} need arm mounts drilled for 16 mm or 19 mm hole spacing. Keep the flight controller on soft mounts near the centre of gravity.`);
+  }
+
+  // misc required items
+  if (P("pdb").status === "chosen" && !/\d+\s*A/i.test(P("pdb").text))
+    add("warn", "Power", "Power distribution board has no rating listed", `Choose one rated for ≥ ${fmt(Math.ceil((iMaxTotal || 60) / 10) * 10, 0)} A with a 5 V BEC output (your ESCs have none).`);
+  if (P("buzzer").status !== "chosen") add("info", "Extras", "Buzzer not chosen", "A few grams; it gives arming tones and a lost-drone alarm. Strongly recommended for a large aircraft.");
+  if (P("antenna").status !== "chosen") add("info", "Extras", "Antennas row is empty", "Most receivers and GPS modules ship with antennas; confirm for the ones you pick.");
+  if (P("wiring").status !== "chosen") add("info", "Extras", "Wiring & connectors row is empty", "See the wiring table and the tools list below for what to buy.");
+  for (const r of ["fpv", "percam", "vtx", "companion"])
+    if (P(r).status === "deferred") add("info", "Phase 2", `${P(r).label} is skipped until the drone flies safely`, "Good sequencing. The model below shows how much flight time the phase 2 hardware costs.");
+
+  // performance verdicts
+  if (outOfData) add("bad", "Performance", "Hover thrust is above your highest test point", "The aircraft is too heavy for this motor/prop/voltage combination.");
+  if (hoverPct) add(hoverPct <= 55 ? "ok" : hoverPct <= 70 ? "warn" : "bad", "Performance",
+    `Hover needs about ${fmt(hoverPct, 0)}% of maximum thrust`, "A hover between 30% and 55% leaves room for wind, climb and control.");
+
+  /* --- wiring --- */
+  const perMotorI = top?.i ?? 15;
+  const wires = [
+    { from: "Battery", to: "Power board", kind: "pwr", spec: `${s.battery.conn || "XT60"} · ${gauge(iMaxTotal || 60)} AWG`, note: "Fit a smoke stopper or fuse for the very first power-up." },
+    { from: "Power board", to: "ESC 1–4 (power)", kind: "pwr", spec: `${gauge(perMotorI)} AWG each`, note: "Solder to the board pads; keep the leads short and equal." },
+    { from: "ESC 1–4", to: "Motor 1–4", kind: "pwr", spec: s.esc.bullet ? `${s.esc.bullet} mm bullets` : "3 phase wires", note: "Swap any two phase wires to reverse a motor's spin direction." },
+    { from: "Power board", to: "Flight controller", kind: "pwr", spec: "VBAT + GND", note: s.esc.noBec ? "ESCs have no BEC, so the FC must be fed here. Confirm its input range covers 6S." : "", verify: true },
+    { from: "Flight controller", to: "ESC 1–4 (signal)", kind: "sig", spec: "Signal + GND per ESC", note: "Wire M1–M4 to the motor order in the ArduPilot quad-X diagram." },
+    { from: "Receiver", to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND", note: "ExpressLRS uses CRSF. In ArduPilot set that port's SERIALx_PROTOCOL to 23 (RCIN).", missing: P("rx").status !== "chosen" || rxK?.kind === "tx-module" },
+    { from: "GPS", to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND", note: "SERIALx_PROTOCOL = 5 (GPS).", missing: P("gps").status !== "chosen" },
+    { from: "Compass (in GPS)", to: "Flight controller I²C", kind: "i2c", spec: "SDA, SCL", note: "Only present if the GPS module has a compass.", missing: P("gps").status !== "chosen" },
+    { from: "Buzzer", to: "Flight controller", kind: "sig", spec: "BZ+ / BZ−", note: "", missing: P("buzzer").status !== "chosen" },
+    { from: "Telemetry radio", to: "Flight controller UART", kind: "data", spec: "MAVLink2", note: "SERIALx_PROTOCOL = 2. Or use ExpressLRS MAVLink telemetry and skip this radio.", missing: !tK || tK.kind !== "telem" },
+  ];
+  const phase2 = [
+    { from: "Companion computer", to: "Flight controller TELEM", kind: "data", spec: "USB-to-UART adapter", note: masterPick(d, "companion")?.compat || "", ghost: true },
+    { from: "Perception camera", to: "Companion computer", kind: "data", spec: "CSI ribbon", note: "", ghost: true },
+    { from: "FPV camera", to: "VTX", kind: "data", spec: "Analog video", note: "", ghost: true },
+  ];
+
+  /* --- plan vs cart --- */
+  const PLAN = [["Propulsion", "motor"], ["ESC", "esc"], ["Propeller", "prop"], ["Flight Controller", "fc"], ["GPS", "gps"], ["Battery", "battery"],
+    ["FPV Camera", "fpv"], ["Perception", "percam"], ["Video TX", "vtx"], ["RC Receiver", "rx"], ["Telemetry", "telem"], ["Companion", "companion"]];
+  const plan = PLAN.map(([sys, role]) => {
+    const rows = (d.master?.items || []).filter((i) => (i.system || "").toLowerCase().startsWith(sys.toLowerCase().split(" ")[0]));
+    const primary = rows.find((r) => /primary|planned/i.test(r.pick || "")) || rows[0];
+    const p = P(role);
+    let cartText = p.status === "chosen" ? p.name : p.status === "deferred" ? "Skipped for now" : "Not chosen";
+    if (role === "motor" && s.motor.model) cartText = `${s.motor.model} ${s.motor.kv ?? ""}KV`;
+    if (role === "esc" && p.status !== "chosen" && s.esc.found) cartText = `${s.esc.cont} A ESC (from motor listing)`;
+    if (role === "prop") cartText = `${prop}${p.status === "chosen" ? " (AliExpress)" : ""}`;
+    if (role === "battery" && s.battery.mah) cartText = `${s.battery.cells}S ${s.battery.mah} mAh ${s.battery.chem || ""} ${s.battery.conn || ""}`;
+    const tokens = (t) => (t || "").toLowerCase().match(/[a-z0-9.]{3,}/g)?.filter((w) => !/holybro|gemfan|caddx|happymodel|arducam|nvidia|molicel|samsung|brotherhobby|iflight|jhemcu|blade|dual|elrs|expresslrs|analog|pair|full|cased/.test(w)) || [];
+    const same = (r) => r && tokens(r.component).some((w) => (p.text + " " + p.specs).toLowerCase().includes(w));
+    const backup = rows.find((r) => r !== primary && same(r));
+    const state = p.status === "deferred" ? "deferred" : p.status !== "chosen" && !(role === "esc" && s.esc.found) && role !== "prop" ? "missing" : same(primary) ? "same" : backup ? "backup" : "changed";
+    return { sys, plan: primary?.component || "–", planW: primary?.weight_g, planPrice: primary?.line_total, cart: cartText, state, url: p.url };
+  });
+
+  return { parts, s, mission, model, findings, wires, phase2, plan, rxK, tK };
+}
+
+/* ---------- render ---------- */
+const SEV_ORDER = { bad: 0, warn: 1, info: 2, ok: 3 };
+const SEV_LABEL = { bad: "Fix", warn: "Check", info: "Note", ok: "OK" };
+const pill = (sev, label) => `<span class="pill ${sev}">${esc(label ?? SEV_LABEL[sev])}</span>`;
+
+function renderHeader(d) {
+  $("file-name").textContent = d.source?.file || "Excel build sheet";
+  $("build-title").textContent = (d.master?.title || "Drone build").replace(/\s+—\s+.*$/, "").replace(/^\d+-INCH\s+/i, (m) => m);
+  $("mission").textContent = d.master?.mission || "";
+  const when = (iso) => { const t = new Date(iso); return isNaN(t) ? "–" : t.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
+  $("synced").textContent = when(d.source?.synced_at);
+  $("modified").textContent = when(d.source?.modified);
+  $("footer").innerHTML = `<span>Source: <a href="${esc(d.source?.share_url)}" target="_blank" rel="noopener">${esc(d.source?.file)}</a> · sheets: ${esc((d.source?.sheets || []).join(", "))} · fingerprint <span class="mono">${esc(d.source?.sha256)}</span></span>
+    <span>Estimates come from your Motor sheet's thrust tests and simple rule-of-thumb weights. Items marked <span class="verify">verify</span> are general guidance; confirm them in the product manuals before you rely on them.</span>`;
+}
+
+function renderGauges(A) {
+  const m = A.model, goal = A.mission;
+  const g = [];
+  const tSev = m.minutes == null ? "warn" : goal.minutes ? (m.minutes >= goal.minutes ? "ok" : m.minutes >= goal.minutes * 0.8 ? "warn" : "bad") : "info";
+  g.push({ sev: tSev, label: "Flight time, hover", val: fmt(m.minutes, 0), unit: "min", vs: goal.minutes ? `Goal ${goal.minutes} min with ${fmt(m.I.payloadG)} g payload` : "" });
+  if (m.jet) g.push({ sev: m.minutes2 >= (goal.minutes || 0) ? "ok" : m.minutes2 >= (goal.minutes || 0) * 0.8 ? "warn" : "bad", label: "With phase 2 autonomy kit", val: fmt(m.minutes2, 0), unit: "min",
+    vs: `Adds ${fmt(m.addG)} g and ${m.jetW} W (${m.jet.component.replace(/NVIDIA\s+/i, "").split(" Dev")[0]}${m.cam ? " + camera" : ""})` });
+  g.push({ sev: m.tw == null ? "warn" : m.tw >= 2 ? "ok" : m.tw >= 1.6 ? "warn" : "bad", label: "Thrust-to-weight", val: fmt(m.tw, 1), unit: ": 1", vs: "2 : 1 or more recommended" });
+  g.push({ sev: goal.auwKg ? (m.auw / 1000 <= goal.auwKg ? "ok" : "warn") : "info", label: "All-up weight (est.)", val: fmt(m.auw / 1000, 2), unit: "kg", vs: goal.auwKg ? `Master plan limit ${goal.auwKg} kg (7-inch plan)` : "" });
+  const first = ["motor", "esc", "prop", "fc", "battery", "frame", "rx", "pdb", "gps"];
+  const ready = first.filter((r) => A.parts[r]?.status === "chosen" && !(r === "rx" && A.rxK?.kind === "tx-module") || (r === "esc" && A.s.esc.found));
+  g.push({ sev: ready.length === first.length ? "ok" : ready.length >= first.length - 2 ? "warn" : "bad", label: "Parts for autonomous flight", val: `${ready.length}`, unit: `/ ${first.length}`,
+    vs: "Missing: " + (first.filter((r) => !ready.includes(r)).map((r) => ({ gps: "GPS", rx: "receiver", esc: "ESC", fc: "flight controller", pdb: "power board" }[r] || r)).join(", ") || "none") });
+  $("gauges").innerHTML = g.map((x) => `<div class="gauge" data-sev="${x.sev}"><span class="eyebrow">${esc(x.label)}</span><div class="val">${esc(x.val)} <small>${esc(x.unit)}</small></div><div>${pill(x.sev)}</div><span class="vs">${esc(x.vs)}</span></div>`).join("");
+  const bad = A.findings.filter((f) => f.sev === "bad").length;
+  $("goal-note").textContent = bad ? `${bad} item${bad > 1 ? "s" : ""} must be fixed before this build can meet the mission.` : "No blocking issues found.";
+}
+
+function renderFindings(A) {
+  const counts = { all: A.findings.length, issues: A.findings.filter((f) => f.sev === "bad" || f.sev === "warn").length };
+  for (const f of A.findings) counts[f.sev] = (counts[f.sev] || 0) + 1;
+  $("find-filter").innerHTML = ["issues", "all", "bad", "warn", "info", "ok"].filter((k) => counts[k]).map((k) =>
+    `<button type="button" data-f="${k}" aria-pressed="${FILTER === k}">${{ all: "All", issues: "Fix + check" }[k] || SEV_LABEL[k]} ${counts[k]}</button>`).join("");
+  const list = A.findings.filter((f) => FILTER === "all" || f.sev === FILTER || (FILTER === "issues" && (f.sev === "bad" || f.sev === "warn"))).sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
+  $("findings").innerHTML = list.map((f) => `<li><div style="display:grid;gap:6px;align-content:start">${pill(f.sev)}<span class="area">${esc(f.area)}</span></div>
+    <div style="min-width:0"><div class="t">${esc(f.t)}${f.verify ? '<span class="verify">verify</span>' : ""}</div>${f.d ? `<p class="d">${esc(f.d)}</p>` : ""}</div></li>`).join("");
+}
+
+function renderSchematic(A) {
+  const P = (r) => A.parts[r] || { status: "missing" };
+  const st = (r, extraBad) => extraBad ? "missing" : P(r).status === "chosen" ? "ok" : P(r).status;
+  const escSt = A.s.esc.found || P("esc").status === "chosen" ? "ok" : "missing";
+  const N = {
+    batt: { x: 20, y: 200, w: 150, h: 64, t: "Battery", s: A.s.battery.mah ? `${A.s.battery.cells}S ${A.s.battery.mah} mAh` : "–", st: st("battery") },
+    pdb: { x: 230, y: 200, w: 150, h: 64, t: "Power board", s: "PDB / 5 V BEC", st: st("pdb") },
+    fc: { x: 450, y: 186, w: 170, h: 92, t: "Flight controller", s: (A.parts.fc?.name || "–").replace(/\s*\(.*\)$/, "").replace(/^Holybro\s+/i, ""), st: st("fc") },
+    rx: { x: 450, y: 30, w: 170, h: 60, t: "Receiver", s: A.rxK?.kind === "tx-module" ? "Need an ELRS RX" : (A.parts.rx?.name || "–"), st: st("rx", A.rxK?.kind === "tx-module") },
+    gps: { x: 650, y: 30, w: 170, h: 60, t: "GPS + compass", s: P("gps").status === "chosen" ? A.parts.gps.name : "Not chosen", st: st("gps") },
+    buz: { x: 240, y: 30, w: 150, h: 60, t: "Buzzer", s: P("buzzer").status === "chosen" ? "" : "Not chosen", st: st("buzzer") },
+    jet: { x: 450, y: 400, w: 170, h: 60, t: "Companion", s: "Phase 2", st: "deferred" },
+    cam: { x: 240, y: 400, w: 150, h: 60, t: "Perception cam", s: "Phase 2", st: "deferred" },
+    vtx: { x: 20, y: 400, w: 150, h: 60, t: "FPV cam + VTX", s: "Phase 2", st: "deferred" },
+  };
+  for (let i = 0; i < 4; i++) {
+    N["esc" + i] = { x: 740, y: 140 + i * 66, w: 90, h: 50, t: `ESC ${i + 1}`, s: A.s.esc.cont ? `${A.s.esc.cont} A` : "", st: escSt };
+    N["mot" + i] = { x: 860, y: 140 + i * 66, w: 100, h: 50, t: `Motor ${i + 1}`, s: A.s.motor.kv ? `${A.s.motor.kv} KV` : "", st: st("motor") };
+  }
+  const R = (n, side) => side === "r" ? [n.x + n.w, n.y + n.h / 2] : side === "l" ? [n.x, n.y + n.h / 2] : side === "t" ? [n.x + n.w / 2, n.y] : [n.x + n.w / 2, n.y + n.h];
+  const line = (a, b, cls, dash, off = 0) => {
+    const [x1, y1] = a, [x2, y2] = b; const mx = (x1 + x2) / 2 + off;
+    const dpath = Math.abs(y1 - y2) < 1 ? `M${x1} ${y1}H${x2}` : Math.abs(x1 - x2) < 1 ? `M${x1} ${y1}V${y2}` : `M${x1} ${y1}H${mx}V${y2}H${x2}`;
+    return `<path d="${dpath}" fill="none" stroke="var(--${cls})" stroke-width="${cls === "pwr" ? 3.5 : 2}" ${dash ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
+  };
+  let e = "";
+  e += line(R(N.batt, "r"), R(N.pdb, "l"), "pwr");
+  e += `<path d="M${N.pdb.x + 75} ${N.pdb.y + 64}V340H710V${N.esc0.y + 18}" fill="none" stroke="var(--pwr)" stroke-width="3.5" stroke-linejoin="round"/>`;
+  for (let i = 0; i < 4; i++) {
+    const y = N["esc" + i].y + 18;
+    e += `<path d="M710 ${y}H740" fill="none" stroke="var(--pwr)" stroke-width="3.5"/>`;
+    e += line([N["esc" + i].x + 90, y + 6], [N["mot" + i].x, y + 6], "pwr");
+    e += `<path d="M620 ${200 + i * 18}H${645 + i * 12}V${N["esc" + i].y + 38}H740" fill="none" stroke="var(--sig)" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  e += `<path d="M${N.pdb.x + 150} 222H450" fill="none" stroke="var(--pwr)" stroke-width="3.5"/>`;
+  e += line(R(N.rx, "b"), [N.rx.x + 85, N.fc.y], "data", N.rx.st !== "ok");
+  e += `<path d="M${N.gps.x + 30} 90V150H590V186" fill="none" stroke="var(--data)" stroke-width="2" ${N.gps.st !== "ok" ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
+  e += `<path d="M${N.gps.x + 55} 90V162H605V186" fill="none" stroke="var(--i2c)" stroke-width="2" stroke-dasharray="${N.gps.st !== "ok" ? "6 5" : "3 3"}" stroke-linejoin="round"/>`;
+  e += `<path d="M${N.buz.x + 75} 90V150H480V186" fill="none" stroke="var(--sig)" stroke-width="2" ${N.buz.st !== "ok" ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
+  e += `<g opacity=".45">` + line(R(N.jet, "t"), R(N.fc, "b"), "data", true) + line(R(N.cam, "r"), R(N.jet, "l"), "data", true) + `</g>`;
+  const box = (n) => {
+    const stroke = n.st === "ok" ? "var(--ink)" : n.st === "missing" ? "var(--bad)" : "var(--muted)";
+    const fill = n.st === "missing" ? "var(--bad-bg)" : "var(--panel)";
+    return `<g opacity="${n.st === "deferred" ? 0.5 : 1}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="${n.st === "ok" ? 1.5 : 1.5}" ${n.st !== "ok" ? 'stroke-dasharray="5 4"' : ""}/>
+      <text x="${n.x + 10}" y="${n.y + 22}" font-size="13" font-weight="600" fill="var(--ink)">${esc(n.t)}</text>
+      <text x="${n.x + 10}" y="${n.y + 40}" font-size="11" fill="${n.st === "missing" ? "var(--bad)" : "var(--muted)"}">${esc(String(n.s).slice(0, n.w > 160 ? 24 : 18))}</text></g>`;
+  };
+  const labels = `<text x="180" y="194" font-size="10.5" fill="var(--muted)">${esc(A.s.battery.conn || "XT60")} · ${gauge(A.model.iMaxTotal || 60)} AWG</text>
+    <text x="390" y="214" font-size="10.5" fill="var(--muted)">VBAT</text>
+    <text x="560" y="356" font-size="10.5" fill="var(--muted)">${gauge(A.model.top?.i || 15)} AWG</text>
+    <text x="860" y="132" font-size="10.5" fill="var(--muted)">3-phase</text>
+    <text x="${N.rx.x + 92}" y="140" font-size="10.5" fill="var(--muted)">CRSF</text>`;
+  $("schematic").innerHTML = `<svg viewBox="0 0 980 480" width="980" height="480" role="img" aria-label="Wiring diagram from battery through power board and ESCs to motors, with flight controller, receiver, GPS and buzzer">${e}${Object.values(N).map(box).join("")}${labels}</svg>`;
+
+  const rows = [...A.wires, ...A.phase2];
+  $("wire-table").innerHTML = `<thead><tr><th>From</th><th>To</th><th>Line</th><th>Wire / connector</th><th>Notes</th></tr></thead><tbody>${rows.map((w) => {
+    const kind = { pwr: "Power", sig: "Signal", data: "Serial", i2c: "I²C" }[w.kind];
+    const state = w.ghost ? pill("off", "Phase 2") : w.missing ? pill("bad", "Part missing") : "";
+    return `<tr class="${w.ghost ? "ghost" : ""}"><td>${esc(w.from)}</td><td>${esc(w.to)}</td><td><span style="color:var(--${w.kind})">■</span> ${kind}</td><td class="mono small">${esc(w.spec)}</td><td class="small">${state} ${esc(w.note)}${w.verify ? '<span class="verify">verify</span>' : ""}</td></tr>`;
+  }).join("")}</tbody>`;
+}
+
+const INPUT_DEFS = [
+  ["grp", "Aircraft"], ["motorG", "Motor (each, g)", 1], ["escG", "ESC (each, g)", 1, true], ["propG", "Prop (each, g)", 1, true], ["fcG", "Flight controller (g)", 1],
+  ["gpsG", "GPS (g)", 1, true], ["rxG", "Receiver (g)", 1, true], ["frameG", "Frame (g)", 10, true], ["wiringG", "PDB + wiring (g)", 10, true], ["payloadG", "Payload (g)", 10],
+  ["grp", "Battery"], ["mah", "Capacity (mAh)", 100], ["battG", "Pack weight (g)", 10, true], ["usable", "Usable capacity (%)", 5, true], ["avionicsW", "Avionics power (W)", 1, true],
+];
+function renderModel(A) {
+  const m = A.model;
+  const sel = `<label>Voltage <select id="in-v">${m.volts.map((v) => `<option value="${v}" ${v === m.v ? "selected" : ""}>${v} V</option>`).join("")}</select></label>
+    <label>Prop <select id="in-prop">${Object.keys(m.curves).map((p) => `<option ${p === m.prop ? "selected" : ""}>${esc(p)}</option>`).join("")}</select></label>`;
+  $("inputs").innerHTML = sel + INPUT_DEFS.map(([k, label, step, est]) => k === "grp" ? `<div class="grp">${esc(label)}</div>` :
+    `<label for="in-${k}"><span>${esc(label)}${est ? ' <span class="muted small">est.</span>' : ""}</span><input id="in-${k}" data-k="${k}" type="number" min="0" step="${step}" value="${Math.round(m.I[k] * 10) / 10}"></label>`).join("") +
+    `<button type="button" id="reset-inputs" style="justify-self:start;font-size:.75rem;padding:6px 10px;border-width:1px">Reset to sheet values</button>`;
+  $("readout").innerHTML = [
+    ["All-up weight", `${fmt(m.auw)} g`], ["Hover thrust / motor", `${fmt(m.hoverPull)} g`], ["Hover current / motor", `${fmt(m.iHover, 1)} A`],
+    ["Max current, all motors", `${fmt(m.iMaxTotal, 0)} A`], ["Hover throttle (thrust %)", `${fmt(m.hoverPct, 0)} %`], ["Est. hover time", `${fmt(m.minutes, 1)} min`],
+  ].map(([k, v]) => `<div><span class="eyebrow">${k}</span><b>${v}</b></div>`).join("");
+  renderChart(A);
+}
+
+function renderChart(A) {
+  const m = A.model, props = Object.keys(m.curves);
+  const W = 640, H = 300, L = 52, Rm = 96, T = 14, B = 40;
+  const maxX = Math.max(...props.flatMap((p) => m.curves[p].map((q) => q.pull)), m.hoverPull) * 1.05;
+  const maxY = Math.max(...props.flatMap((p) => m.curves[p].map((q) => q.i))) * 1.12;
+  const niceStep = (span, n) => { const r = span / n, p = 10 ** Math.floor(Math.log10(r)); return [1, 2, 2.5, 5, 10].map((k) => k * p).find((s) => s >= r); };
+  const sx = (x) => L + x / maxX * (W - L - Rm), sy = (y) => T + (1 - y / maxY) * (H - T - B);
+  const xs = niceStep(maxX, 6), ys = niceStep(maxY, 5);
+  let g = "";
+  for (let x = 0; x <= maxX; x += xs) g += `<line x1="${sx(x)}" x2="${sx(x)}" y1="${T}" y2="${H - B}" stroke="var(--line)"/><text x="${sx(x)}" y="${H - B + 16}" font-size="11" text-anchor="middle" fill="var(--muted)">${fmt(x)}</text>`;
+  for (let y = 0; y <= maxY; y += ys) g += `<line x1="${L}" x2="${W - Rm}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--line)"/><text x="${L - 8}" y="${sy(y) + 4}" font-size="11" text-anchor="end" fill="var(--muted)">${fmt(y)}</text>`;
+  g += `<text x="${(L + W - Rm) / 2}" y="${H - 6}" font-size="11" text-anchor="middle" fill="var(--muted)">Thrust per motor (g)</text>
+    <text transform="translate(14 ${(T + H - B) / 2}) rotate(-90)" font-size="11" text-anchor="middle" fill="var(--muted)">Current per motor (A)</text>`;
+  const hx = sx(m.hoverPull);
+  g += `<line x1="${hx}" x2="${hx}" y1="${T}" y2="${H - B}" stroke="var(--ink)" stroke-dasharray="4 4"/><text x="${hx + 5}" y="${T + 12}" font-size="11" fill="var(--ink)">hover ${fmt(m.hoverPull)} g</text>`;
+  const ends = [];
+  props.forEach((p, idx) => {
+    const c = m.curves[p], col = `var(--s${idx % 4 + 1})`, sel = p === m.prop;
+    const pts = [{ pull: 0, i: c[0].i0 ?? 0 }, ...c];
+    g += `<polyline points="${pts.map((q) => `${sx(q.pull)},${sy(q.i)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="${sel ? 3 : 2}" stroke-linejoin="round" opacity="${sel ? 1 : 0.75}"/>`;
+    for (const q of c) g += `<circle cx="${sx(q.pull)}" cy="${sy(q.i)}" r="${sel ? 5 : 4}" fill="${col}" stroke="var(--panel)" stroke-width="2" data-tip="${esc(`${p} · ${fmt(q.pull)} g · ${fmt(q.i, 1)} A · ${fmt(q.pull / (q.power || q.i * m.v), 1)} g/W`)}"/>`;
+    ends.push({ p, y: sy(c.at(-1).i), x: sx(c.at(-1).pull), col, sel });
+  });
+  ends.sort((a, b) => a.y - b.y).forEach((e, i, arr) => { if (i && e.y - arr[i - 1].y < 14) e.y = arr[i - 1].y + 14; });
+  for (const e of ends) g += `<rect x="${W - Rm + 6}" y="${e.y - 4}" width="8" height="8" rx="2" fill="${e.col}"/><text x="${W - Rm + 18}" y="${e.y + 4}" font-size="11" font-weight="${e.sel ? 600 : 400}" fill="var(--ink)">${esc(e.p)}</text>`;
+  if (m.iHover != null) g += `<circle cx="${hx}" cy="${sy(m.iHover)}" r="6" fill="var(--panel)" stroke="var(--ink)" stroke-width="2.5" data-tip="${esc(`Your hover: ${fmt(m.hoverPull)} g · ${fmt(m.iHover, 1)} A per motor`)}"/>`;
+  $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;max-width:${W}px" role="img" aria-label="Current versus thrust per motor at ${m.v} volts for each prop on your Motor sheet">${g}</svg><div class="tip" id="tip" hidden></div>`;
+  $("chart-legend").innerHTML = props.map((p, i) => `<span><i style="border-color:var(--s${i % 4 + 1})"></i>${esc(p)}${p === m.prop ? " (selected)" : ""}</span>`).join("") + `<span>${m.v} V · data from your Motor sheet</span>`;
+}
+
+const TOOLS = (A) => {
+  const big = (propInches(A.model.prop) || 0) >= 10;
+  const g1 = gauge(A.model.iMaxTotal || 60), g2 = gauge(A.model.top?.i || 15);
+  const build = [
+    ["Soldering iron, 80 W or more, with a chisel tip", `${g1} AWG battery leads and ${A.s.battery.conn || "XT60"} pads soak up heat`],
+    ["Leaded 63/37 rosin-core solder and flux", ""],
+    ["Heat-shrink assortment and a heat gun", ""],
+    [`Silicone wire: ${g1} AWG (battery), ${g2} AWG (ESC power), 26 AWG (signals)`, "Sized from your Motor sheet's peak current"],
+    [`${A.s.battery.conn || "XT60"} connectors${A.model.iMaxTotal > 48 ? " (consider XT90)" : ""} and ${A.s.esc.bullet || "3.5"} mm bullet connectors`, ""],
+    ["Multimeter", "Check for shorts between + and − before every first power-up"],
+    ["Smoke stopper or inline fuse", "Protects the board on the very first plug-in"],
+    ["Hex drivers 1.5 / 2 / 2.5 / 3 mm, M3 hardware, blue threadlocker", "Threadlocker on motor screws only, not into plastic"],
+    ["Zip ties, battery strap, double-sided foam tape", ""],
+    ["Digital scale (to 5 kg)", "Weigh the real build and type it into the model above"],
+  ];
+  if (A.parts.frame?.text && /self/i.test(A.parts.frame.text)) build.push(["Calipers, carbon tube cutter or saw, drill bits for 16/19 mm motor patterns", "For your self-designed frame"]);
+  if (A.s.battery.chem === "Li-ion") build.push(["Battery spot welder and nickel strip, plus a BMS", "For building Li-ion packs"]);
+  const fly = [
+    [`${A.s.battery.cells || 6}S balance charger and power supply`, ""],
+    ["LiPo-safe charging bag or box", ""],
+    ["Battery voltage checker", ""],
+    [big ? "Prop balancer (important for large props)" : "Prop balancer", ""],
+    ["Laptop with Mission Planner or QGroundControl", "Setup, calibration and waypoint missions in ArduPilot"],
+    ["ExpressLRS Configurator and a USB-C data cable", "To bind and update the radio link"],
+    ["Spare props (CW and CCW)", ""],
+    ["Safety glasses and a fire extinguisher for the bench", big ? "16-inch props carry a lot of energy" : ""],
+  ];
+  return [["Build bench", build], ["Setup and flying", fly]];
+};
+function renderTools(A) {
+  const ticks = store.get("drone-tools", {});
+  $("tools").innerHTML = TOOLS(A).map(([h, list]) => `<div style="display:grid;gap:10px;align-content:start"><h3>${h}</h3><ul class="tools">${list.map(([t, why], i) => {
+    const id = "tool-" + h.slice(0, 3) + i;
+    return `<li><input type="checkbox" id="${id}" data-tool="${esc(t)}" ${ticks[t] ? "checked" : ""}><label for="${id}">${esc(t)}${why ? `<span class="why">${esc(why)}</span>` : ""}</label></li>`;
+  }).join("")}</ul></div>`).join("");
+}
+
+function renderPlan(A) {
+  const lab = { same: pill("ok", "Same as plan"), backup: pill("info", "Plan's backup"), changed: pill("warn", "Changed"), missing: pill("bad", "Not chosen"), deferred: pill("off", "Skipped") };
+  $("plan-table").innerHTML = `<thead><tr><th>System</th><th>Master plan (primary)</th><th>Your cart</th><th>Status</th><th style="text-align:right">Plan $</th></tr></thead><tbody>${A.plan.map((r) =>
+    `<tr><td>${esc(r.sys)}</td><td>${esc(r.plan)}</td><td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.cart)}</a>` : esc(r.cart)}</td><td>${lab[r.state]}</td><td class="n">${r.planPrice != null ? "$" + fmt(r.planPrice, 2) : "–"}</td></tr>`).join("")}
+    <tr><td colspan="4" class="muted small">Master sheet subtotal (primary picks)</td><td class="n"><b>$${fmt(DATA.master?.subtotal, 2)}</b></td></tr></tbody>`;
+}
+
+function renderNext(A) {
+  const items = A.findings.filter((f) => f.sev === "bad" || f.sev === "warn").sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]).map((f) => f.t);
+  const extra = [
+    "Fill the empty rows on the cart sheet (ESC, GPS, buzzer, antennas, wiring), then press Update.",
+    "Bench-test with props off: bind the radio, check motor order and spin direction in Mission Planner, calibrate the ESCs.",
+    "Weigh the finished aircraft and enter the real weight in the model to confirm flight time.",
+    "First flights in Stabilize and AltHold, then Loiter once GPS is fitted; autonomous missions after that.",
+    "Phase 2: add the companion computer and perception camera, and re-run the model to see the flight-time cost.",
+  ];
+  $("next").innerHTML = [...items, ...extra].map((t) => `<li>${esc(t)}</li>`).join("");
+}
+
+function renderAll() {
+  if (!DATA) return;
+  const A = analyse(DATA);
+  window.__A = A;
+  renderHeader(DATA); renderGauges(A); renderFindings(A); renderSchematic(A); renderModel(A); renderPlan(A); renderTools(A); renderNext(A);
+}
+
+/* ---------- events ---------- */
+document.addEventListener("input", (e) => {
+  const k = e.target.dataset?.k;
+  if (k) { const v = parseFloat(e.target.value); if (isFinite(v)) { INPUTS[k] = v; store.set("drone-inputs", INPUTS); rerenderModelOnly(); } }
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id === "in-v") { INPUTS.v = parseFloat(e.target.value); delete INPUTS.prop; store.set("drone-inputs", INPUTS); renderAll(); }
+  if (e.target.id === "in-prop") { INPUTS.prop = e.target.value; store.set("drone-inputs", INPUTS); renderAll(); }
+  if (e.target.dataset?.tool) { const t = store.get("drone-tools", {}); t[e.target.dataset.tool] = e.target.checked; store.set("drone-tools", t); }
+});
+let modelTimer;
+function rerenderModelOnly() {
+  clearTimeout(modelTimer);
+  modelTimer = setTimeout(() => {
+    const A = analyse(DATA); window.__A = A;
+    renderGauges(A); renderFindings(A); renderSchematic(A); renderNext(A); renderChart(A);
+    const m = A.model;
+    $("readout").innerHTML = [["All-up weight", `${fmt(m.auw)} g`], ["Hover thrust / motor", `${fmt(m.hoverPull)} g`], ["Hover current / motor", `${fmt(m.iHover, 1)} A`],
+      ["Max current, all motors", `${fmt(m.iMaxTotal, 0)} A`], ["Hover throttle (thrust %)", `${fmt(m.hoverPct, 0)} %`], ["Est. hover time", `${fmt(m.minutes, 1)} min`]]
+      .map(([k, v]) => `<div><span class="eyebrow">${k}</span><b>${v}</b></div>`).join("");
+  }, 120);
+}
+document.addEventListener("click", (e) => {
+  const f = e.target.closest("[data-f]");
+  if (f) { FILTER = f.dataset.f; renderFindings(window.__A); }
+  if (e.target.id === "reset-inputs") { INPUTS = {}; store.set("drone-inputs", INPUTS); renderAll(); }
+});
+document.addEventListener("pointerover", (e) => {
+  const t = e.target.closest?.("[data-tip]"), tip = $("tip");
+  if (!tip) return;
+  if (!t) { tip.hidden = true; return; }
+  const box = $("chart").getBoundingClientRect(), r = t.getBoundingClientRect();
+  tip.textContent = t.dataset.tip; tip.hidden = false;
+  tip.style.left = (r.left + r.width / 2 - box.left + $("chart").scrollLeft) + "px"; tip.style.top = (r.top - box.top) + "px";
+});
+
+/* ---------- data loading and the Update button ---------- */
+async function loadData(quiet) {
+  try {
+    const res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const d = await res.json();
+    const changed = !DATA || DATA.source?.synced_at !== d.source?.synced_at;
+    DATA = d;
+    if (changed) renderAll();
+    return d;
+  } catch (err) {
+    if (!quiet) setStatus("Could not read the synced data (" + err.message + "). Press Reload to try again.", "bad");
+    return null;
+  }
+}
+function setStatus(text, tone) { const s = $("status"); s.textContent = text; s.dataset.tone = tone || ""; }
+
+let polling = null;
+function waitForNewSync(prevSync) {
+  const started = Date.now();
+  clearInterval(polling);
+  polling = setInterval(async () => {
+    const d = await loadData(true);
+    const mins = Math.round((Date.now() - started) / 60000);
+    if (d && d.source?.synced_at !== prevSync) {
+      clearInterval(polling); $("update-btn").disabled = false;
+      setStatus(d.source?.sha256 === window.__prevSha ? "Updated. Your Excel file has not changed since the last sync." : "Updated from your latest Excel file.", "ok");
+    } else if (Date.now() - started > 10 * 60000) {
+      clearInterval(polling); $("update-btn").disabled = false;
+      setStatus("No new data after 10 minutes. The refresh session may have failed; check Claude Code for the latest session, or press Update again.", "bad");
+    } else setStatus(`Refreshing… a Claude session is pulling your Excel file (${mins} min so far, usually 2–4). This page reloads by itself.`);
+  }, 15000);
+}
+
+$("reload-btn").addEventListener("click", async () => { setStatus("Reloading…"); const d = await loadData(); if (d) setStatus("Showing the latest synced data.", "ok"); });
+
+$("update-btn").addEventListener("click", async () => {
+  const btn = $("update-btn");
+  if (!TRIGGER_ID) { setStatus("The refresh task is not set up yet. Ask Claude to update the feed.", "bad"); return; }
+  const mcp = window.claude?.use ? await window.claude.use("mcp") : null;
+  if (!mcp) { setStatus("Update works when this page is opened on claude.ai. Here you can only Reload.", "bad"); return; }
+  btn.disabled = true; setStatus("Starting the refresh…");
+  const prev = DATA?.source?.synced_at; window.__prevSha = DATA?.source?.sha256;
+  try {
+    await mcp.callTool("Claude Code Remote", "fire_trigger", { trigger_id: TRIGGER_ID }, { cache: false });
+    setStatus("Refresh started. A Claude session is pulling your Excel file (usually 2–4 min). This page reloads by itself.");
+    waitForNewSync(prev);
+  } catch (err) {
+    btn.disabled = false;
+    const msg = {
+      server_not_connected: "Claude Code Remote isn't connected for you. Add it in claude.ai Settings → Connectors, then try again.",
+      needs_reauth: "Reconnect Claude Code Remote in claude.ai Settings → Connectors, then try again.",
+      not_in_manifest: "This page isn't allowed to start the refresh. Allow Claude Code Remote in this artifact's Permissions menu, then try again.",
+      approval_required: "The refresh needs your approval. Press Update again and choose Allow.",
+      consent_required: "The refresh needs your approval. Press Update again and choose Allow.",
+      blocked_by_policy: "Your organization's policy blocks starting Claude Code tasks from a page.",
+      tool_error: "The refresh task reported an error: " + (err.message || "unknown") + ". It may have been deleted; ask Claude to set it up again.",
+      server_unavailable: "Claude Code Remote didn't answer. Wait a minute and press Update again.",
+      not_granted: "Update works when this page is opened on claude.ai. Here you can only Reload.",
+      capability_disabled: "Update works when this page is opened on claude.ai. Here you can only Reload.",
+    }[err?.code] || "Couldn't start the refresh (" + (err?.code || err?.message || "unknown error") + "). Press Update to try again.";
+    setStatus(msg, "bad");
+  }
+});
+
+/* ---------- Ask Claude ---------- */
+(async () => {
+  const sample = window.claude?.use ? await window.claude.use("sample") : null;
+  if (!sample) { $("ask-panel").hidden = true; return; }
+  let ctrl = null;
+  $("ask-btn").addEventListener("click", async () => {
+    if (!DATA) return;
+    const A = window.__A, out = $("ask-out");
+    ctrl?.abort(); ctrl = new AbortController();
+    out.hidden = false; out.textContent = "Thinking…"; $("ask-btn").disabled = true;
+    const brief = { mission: DATA.master?.mission, cart: DATA.cart?.items?.map((i) => ({ component: i.component, choice: (i.link || "").split("?")[0], specs: (i.specs || "").slice(0, 1500) })),
+      plan_primary: DATA.master?.items?.filter((i) => /primary|planned/i.test(i.pick || "")).map((i) => ({ system: i.system, component: i.component, weight_g: i.weight_g, compat: i.compat })),
+      efficiency_choice: DATA.efficiency, model: { volts: A.model.v, prop: A.model.prop, auw_g: Math.round(A.model.auw), hover_min: +A.model.minutes?.toFixed(1), thrust_to_weight: +A.model.tw?.toFixed(2), max_current_A: Math.round(A.model.iMaxTotal), inputs: A.model.I },
+      findings: A.findings.map((f) => `[${f.sev}] ${f.area}: ${f.t}`) };
+    const prompt = `You are reviewing a student's autonomous quadcopter build. Below is their build sheet (synced from Excel) and an automated check. Write a concise review in plain text (no markdown tables), under 450 words, with these headings: "Will it meet the mission?", "Biggest risks", "Parts to buy or change", "Next steps". Be specific to these parts. If you are not certain about a product fact, say so and suggest verifying it in the manual. Do not invent prices or links.\n\n${JSON.stringify(brief)}`;
+    try {
+      const r = await sample(prompt, { signal: ctrl.signal, modelTier: "default", onText: ({ text }) => { out.textContent = text; } });
+      out.textContent = r.text + (r.truncated ? "\n\n(Answer was cut short.)" : "");
+    } catch (err) {
+      out.textContent = err?.code === "not_granted" ? "Claude review isn't available for this view." : err?.code === "rate_limited" ? "Too many requests. Wait a minute, then try again." : (err?.text || "") + "\n\nThe review stopped early (" + (err?.code || "error") + "). Press the button to try again.";
+    } finally { $("ask-btn").disabled = false; }
+  });
+})();
+
+INPUTS = store.get("drone-inputs", {});
+loadData();
+</script>
