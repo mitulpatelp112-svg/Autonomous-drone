@@ -2,9 +2,9 @@
  "source": {
   "file": "7inch_Drone_Master_Build_Sheet.xlsx",
   "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
-  "modified": "Wed, 21 Oct 2026 17:51:02 GMT",
-  "sha256": "9120cd0e16fcc426",
-  "synced_at": "2026-10-21T17:52:07+00:00",
+  "modified": "Wed, 21 Oct 2026 19:09:43 GMT",
+  "sha256": "790128d31e998898",
+  "synced_at": "2026-10-21T19:11:23+00:00",
   "sheets": [
    "cart",
    "Motor",
@@ -36,7 +36,7 @@
    },
    {
     "component": "GPS",
-    "link": "https://pyrodrone.com/collections/gps-and-lost-model-devices/products/sequre-m10-252q-gps-module-small-size-fast-positioning-bf-inav-ardupilot-fixed-wing-drone",
+    "link": "GPS with compass",
     "specs": null
    },
    {
@@ -80,8 +80,13 @@
     "specs": null
    },
    {
-    "component": "Telemetry Radio tx",
+    "component": "Radio",
     "link": "TX",
+    "specs": null
+   },
+   {
+    "component": "Telemetry  tx",
+    "link": "No need",
     "specs": null
    },
    {

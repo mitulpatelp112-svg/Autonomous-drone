@@ -247,10 +247,9 @@ const TRIGGER_ID = "trig_01LJERC8mmmHL2Tz3PwJDpgo";
 const DECISIONS = {
   date: "2026-10-21",
   parts: {
-    radio: { label: "Radio controller", name: "RadioMaster Pocket (ELRS radio)", specs: "Budget EdgeTX handheld radio (about $60–72) with a Nano module bay on the back and an internal 2.4 GHz ELRS module." },
-    tx: { label: "RC Transmitter", name: "RadioMaster Nomad (ELRS TX module)", specs: "Dual LR1121 (2.4 GHz + 900 MHz), 1 W per band, ESP32 with an ESP32-C3 WiFi Backpack, JR 5-pin socket plus an included Nano 8-pin adapter. About $55 at one retailer." },
+    radio: { label: "Radio controller", name: "RadioMaster Boxer, ELRS version (radio)", specs: "EdgeTX handheld radio with built-in 2.4 GHz ExpressLRS (up to 1 W in the US per listings), a built-in WiFi Backpack and a standard JR module bay." },
     rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
-    telem: { label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via Nomad WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
+    telem: { label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via the radio's WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
     gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
   },
 };
@@ -271,8 +270,8 @@ let FILTER = "issues";
 // verify:true marks claims that should be checked against the product manual.
 const KB = [
   { id: "nomad", re: /nomad/i, name: "RadioMaster Nomad (ELRS TX module)", short: "Nomad", kind: "tx-module", notes: [] },
-  { id: "boxer", re: /boxer/i, name: "RadioMaster Boxer (radio)", short: "Boxer", kind: "radio", bay: "JR", notes: [] },
-  { id: "pocket", re: /\bpocket\b/i, name: "RadioMaster Pocket (ELRS radio)", short: "Pocket", kind: "radio", bay: "Nano", notes: [] },
+  { id: "boxer", re: /boxer/i, name: "RadioMaster Boxer (radio)", short: "Boxer", kind: "radio", bay: "JR", internalElrs: true, backpack: true, notes: [] },
+  { id: "pocket", re: /\bpocket\b/i, name: "RadioMaster Pocket (ELRS radio)", short: "Pocket", kind: "radio", bay: "Nano", internalElrs: true, backpack: null, notes: [] },
   { id: "xr3", re: /\bxr3\b/i, name: "RadioMaster XR3 (ELRS receiver)", short: "XR3", kind: "rx", notes: [] },
   { id: "m10", re: /micro\s*m10/i, name: "Holybro Micro M10 (GPS + compass)", short: "Micro M10", kind: "gps", compass: true, conn: "JST-GH", weight: 14, notes: [] },
   { id: "sequre-m10", re: /sequre[-\s]?m10|m10-25/i, name: "Sequre M10-252Q (GPS + QMC5883 compass)", short: "Sequre M10-252Q", kind: "gps", compass: true, conn: "SH1.0 6-pin", weight: 12, notes: [] },
@@ -317,7 +316,7 @@ function cartParts(d) {
   for (const it of d.cart?.items || []) {
     const role = roleOf(it.component);
     const text = it.link || "";
-    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : /^(rx|tx|tbd|todo|\?+|-+)$/i.test(text.trim()) ? "placeholder" : "chosen";
+    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : /^(rx|tx|tbd|todo|\?+|-+)$/i.test(text.trim()) ? "placeholder" : /^(no need|not needed|none|n\/?a)$/i.test(text.trim()) ? "notneeded" : "chosen";
     parts[role] = { role, label: it.component, text, specs: it.specs || "", status, name: status === "chosen" ? niceName(text) : "", url: linkOf(text) };
   }
   // The sheet lists the TX module under "RC Receiver" and the radio under "Telemetry"; move them to their real roles.
@@ -326,7 +325,8 @@ function cartParts(d) {
   if (kindOf(parts.telem) === "radio" && !parts.radio) { parts.radio = { ...parts.telem, role: "radio", movedFrom: parts.telem.label }; delete parts.telem; }
   for (const [role, dd] of Object.entries(DECISIONS.parts)) {
     if (parts[role]?.status === "chosen") continue;
-    parts[role] = { role, label: parts[role]?.label || dd.label, text: dd.name, specs: dd.specs, status: "decided", name: dd.name, url: dd.url || null, placeholder: parts[role]?.status === "placeholder" ? parts[role].text : null };
+    parts[role] = { role, label: parts[role]?.label || dd.label, text: dd.name, specs: dd.specs, status: "decided", name: dd.name, url: dd.url || null, placeholder: parts[role]?.status === "placeholder" ? parts[role].text : null,
+      agrees: role === "telem" && parts[role]?.status === "notneeded" ? parts[role].text : null };
   }
   return parts;
 }
@@ -538,20 +538,31 @@ function analyse(d) {
   const rxK = kbFor(P("rx").text), txK = kbFor(txP?.text), radioK = kbFor(radioP?.text), tK = kbFor(P("telem").text);
   const mavlink = /mavlink/i.test(P("telem").text || "") && /elrs|expresslrs/i.test(P("telem").text || "");
   const nomadXr3 = txK?.id === "nomad" && rxK?.id === "xr3";
+  // Which ExpressLRS transmitter the drone talks to: an external module, or the radio's own built-in one.
+  const link = txP ? { name: txK?.short || "TX module", internal: false, backpack: txK?.id === "nomad", bands: txK?.id === "nomad" ? "900 MHz or 2.4 GHz" : "2.4 GHz / 900 MHz" }
+    : radioK?.internalElrs ? { name: `${radioK.short} built-in ELRS`, internal: true, backpack: radioK.backpack, bands: "2.4 GHz" } : null;
   if (!has(P("rx"))) add("bad", "Radio", "No receiver chosen", "The drone needs an ExpressLRS receiver wired to the flight controller.");
   else if (rxK?.kind === "tx-module") add("bad", "Radio", "The receiver row holds a transmitter module", "The drone needs an ExpressLRS receiver wired to the flight controller.");
   if (!txP && !radioP) add("bad", "Radio", "No radio or transmitter chosen", "");
   if (txP?.movedFrom) add("warn", "Radio", `${txK?.short || "The TX module"} is listed under "${txP.movedFrom}", but it is your transmitter`,
     `It goes in the radio's module bay, not on the drone. On the cart sheet, move it to an "RC Transmitter" row and put the receiver under "${txP.movedFrom}".`);
   if (radioP?.movedFrom) add("info", "Radio", `${radioK?.short || "The radio"} is listed under "${radioP.movedFrom}", but it is your handheld radio`,
-    "It holds the sticks and switches and feeds the transmitter module. Telemetry now rides on the ExpressLRS link instead of a separate radio. You can rename that row \"Radio controller\".");
+    "It holds the sticks and switches and sends the control link. Telemetry now rides on the ExpressLRS link instead of a separate radio. You can rename that row \"Radio controller\".");
   if (nomadXr3) {
     add("ok", "Radio", "Nomad and XR3 use the same ExpressLRS radio chip", "Both use the Semtech LR1121, so they bind on 2.4 GHz or 900 MHz. Flash both to ExpressLRS 3.5.0 or newer.");
     add("info", "Radio", "XR3 uses one band at a time", "It has a single LR1121, so the Nomad's dual-band Gemini mode is not available. Use 900 MHz for range or 2.4 GHz for faster MAVLink. Full Gemini needs a dual-radio receiver such as the BetaFPV SuperX Nano (about $32).", true);
   }
+  if (link?.internal && rxK?.id === "xr3") {
+    add("ok", "Radio", `${radioK.short}'s built-in ExpressLRS and the XR3 bind on 2.4 GHz`, `The ${radioK.short}'s internal module is 2.4 GHz only. The XR3 is dual-band, so set it to 2.4 GHz to match. Flash both to ExpressLRS 3.5.0 or newer.`);
+    add("info", "Radio", "No 900 MHz without an external module", `2.4 GHz at up to 1 W (US listing) should cover a few kilometres in open fields, but it gets through trees and buildings less well than 900 MHz. If you need more range later, a Nomad slides into the ${radioK.short}'s ${radioK.bay} bay.`, true);
+  }
   if (mavlink) {
-    add(txK?.id === "nomad" && rxK?.id === "xr3" ? "ok" : "info", "Telemetry", "MAVLink over ExpressLRS is supported at both ends",
-      "MAVLink mode needs ESP-based hardware: the Nomad has an ESP32 with an ESP32-C3 Backpack, and the XR3 an ESP32-C3. Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.");
+    const bothEsp = rxK?.id === "xr3" && link?.backpack;
+    add(bothEsp ? "ok" : link?.backpack === false ? "bad" : "warn", "Telemetry", bothEsp ? "MAVLink over ExpressLRS is supported at both ends" : "MAVLink to the laptop needs a WiFi Backpack",
+      link?.internal ? (link.backpack ? `RadioMaster lists a built-in ExpressLRS Backpack on the ${radioK.short}'s ELRS version, and the XR3 is ESP-based (ESP32-C3). Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.`
+        : `I could not confirm the ${radioK.short} has a WiFi Backpack. Check for a Backpack WiFi option in its ExpressLRS script; without one, Mission Planner needs another telemetry link.`)
+        : "MAVLink mode needs ESP-based hardware: the Nomad has an ESP32 with an ESP32-C3 Backpack, and the XR3 an ESP32-C3. Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.", link?.internal);
+    if (link?.backpack) add("info", "Telemetry", "Connecting Mission Planner", `On the ${link.internal ? radioK.short : link.name}, open the ExpressLRS script and switch telemetry to WiFi. Join the Backpack's WiFi from the laptop, then connect Mission Planner by UDP (port 14550).`, true);
     add("ok", "Telemetry", `${rxK?.short || "Receiver"} talks MAVLink2 to ArduPilot over a UART`, "Wire it to a full UART on the flight controller and set that port's SERIALx_PROTOCOL to 2. Take the baud rate and remaining settings from the ExpressLRS MAVLink guide.", true);
   }
   const bayFit = txK?.id === "nomad" && radioK?.bay ? { JR: "the Nomad's own JR 5-pin socket", Nano: "the Nano 8-pin adapter that ships with the Nomad" }[radioK.bay] : null;
@@ -561,7 +572,9 @@ function analyse(d) {
     add("info", "Radio", "The Nomad sticks out from the back of the Pocket", "It is a larger module than the Pocket's bay is usually used with. It works, but expect a bulkier, back-heavy setup; a lanyard or neck strap helps.", true);
   if (txK?.id === "nomad")
     add("warn", "Radio", "Nomad needs its own 2S–4S LiPo above 250 mW", "Retailer listings say high output needs a battery on the Nomad's XT30 input. Add a small 2S–4S LiPo to the cart, or the link stays at 250 mW.", true);
-  for (const p of Object.values(parts)) if (p?.status === "decided")
+  for (const p of Object.values(parts)) if (p?.agrees)
+    add("ok", "Telemetry", `Your "${p.label.trim()}" row says "${p.agrees}", which matches this plan`, "Telemetry and Mission Planner ride on the ExpressLRS link (MAVLink mode), so there is no separate telemetry radio to buy.");
+  for (const p of Object.values(parts)) if (p?.status === "decided" && !p.agrees)
     add("info", "Not in Excel yet", `${p.name} was chosen in chat`, `${p.placeholder ? `Your "${p.label}" row just says "${p.placeholder}". ` : ""}Put the part name or link in the cart sheet (${p.label} row) and press Update to make it official. Until then the page fills this gap for you.`);
 
   // frame
@@ -602,11 +615,12 @@ function analyse(d) {
     { from: "Buzzer", to: "Flight controller", kind: "sig", spec: "BZ+ / BZ−", note: "", missing: !has(P("buzzer")) },
     ...(mavlink ? [] : [{ from: "Telemetry radio", to: "Flight controller UART", kind: "data", spec: "MAVLink2", note: "SERIALx_PROTOCOL = 2. Or use ExpressLRS MAVLink telemetry and skip this radio.", missing: !has(P("telem")) }]),
   ];
-  const ground = txP ? [
+  const ground = [...(txP ? [
     { from: radioK?.short || "Radio", to: `${txK?.short || "TX module"} (module bay)`, kind: "sig", spec: radioK?.bay === "Nano" ? "Nano bay, 8-pin (adapter)" : "JR bay, 5-pin", note: `${radioK?.bay === "Nano" ? "Fit the Nomad's Nano adapter, then plug it into the bay. " : "Slide the module into the bay. "}The radio sends CRSF through the bay pins. Turn off the radio's internal RF in EdgeTX.`, ground: true, verify: true },
     ...(txK?.id === "nomad" ? [{ from: "2S–4S LiPo", to: "Nomad", kind: "pwr", spec: "XT30", note: "Needed for output above 250 mW. Not in your cart yet.", ground: true, missing: true }] : []),
-    ...(mavlink ? [{ from: `${txK?.short || "TX"} WiFi Backpack`, to: "Laptop", kind: "data", spec: "WiFi, no wire", note: "Connect Mission Planner or QGroundControl to the Backpack's WiFi for MAVLink.", ground: true }] : []),
-  ] : [];
+  ] : []),
+    ...(mavlink && link ? [{ from: `${link.internal ? radioK.short + " built-in" : link.name} WiFi Backpack`, to: "Laptop (Mission Planner)", kind: "data", spec: "WiFi, no wire", note: "Connect Mission Planner over UDP (port 14550) for MAVLink telemetry and missions.", ground: true, verify: link.internal, missing: link.backpack === false }] : []),
+  ];
   const phase2 = [
     { from: "Companion computer", to: "Flight controller TELEM", kind: "data", spec: "USB-to-UART adapter", note: masterPick(d, "companion")?.compat || "", ghost: true },
     { from: "Perception camera", to: "Companion computer", kind: "data", spec: "CSI ribbon", note: "", ghost: true },
@@ -655,13 +669,17 @@ function analyse(d) {
   const pOk = cartIn && s.motor.propMax ? cartIn >= (s.motor.propMin ?? 0) && cartIn <= s.motor.propMax : null;
   pair(nm.motor, nm.prop, "Prop adapter", pOk == null ? "warn" : pOk ? "ok" : "bad", pOk == null ? "Prop size unknown." : `${cartIn}" is ${pOk ? "inside" : "outside"} the motor's ${s.motor.propMin}–${s.motor.propMax}" range. Confirm the prop hub fits the motor's adapter.`, true);
   if (wb) pair(nm.prop, nm.frame, "Arm length", has(P("frame")) ? "info" : "bad", `Needs ≥ ${wb} mm motor-to-motor diagonal for ${cartIn}" props.`);
-  pair(nm.radio, nm.tx, `${radioK?.bay || "Module"} bay`, !txP || !radioP ? "bad" : bayFit ? "ok" : "info",
+  if (txP) pair(nm.radio, nm.tx, `${radioK?.bay || "Module"} bay`, !radioP ? "bad" : bayFit ? "ok" : "info",
     bayFit ? `The ${radioK.short}'s ${radioK.bay} bay takes the Nomad through ${bayFit}.` : "Check the module fits the radio's bay.", true);
   if (txK?.id === "nomad") pair("2S–4S LiPo", nm.tx, "XT30", "warn", "Needed above 250 mW output. Not in the cart yet.", true);
   const rxOk = has(P("rx")) && rxK?.kind !== "tx-module";
-  pair(nm.tx, nm.rx, "ExpressLRS radio link", !rxOk ? "bad" : nomadXr3 ? "ok" : "info", nomadXr3 ? "Both LR1121 on ExpressLRS 3.5.0+. The XR3 uses one band at a time (no Gemini)." : "Both must run the same ExpressLRS version and band.");
+  const linkName = link?.internal ? `${nm.radio} (built-in ELRS)` : nm.tx;
+  const intXr3 = link?.internal && rxK?.id === "xr3";
+  pair(linkName, nm.rx, `ExpressLRS · ${link?.bands || "?"}`, !rxOk || !link ? "bad" : nomadXr3 || intXr3 ? "ok" : "info",
+    nomadXr3 ? "Both LR1121 on ExpressLRS 3.5.0+. The XR3 uses one band at a time (no Gemini)." : intXr3 ? "Both on ExpressLRS 3.5.0+. Set the dual-band XR3 to 2.4 GHz to match the radio." : "Both must run the same ExpressLRS version and band.");
   pair(nm.rx, nm.fc, mavlink ? "UART · MAVLink2" : "UART · CRSF", !rxOk ? "bad" : "ok", mavlink ? "Receiver output set to MAVLink; SERIALx_PROTOCOL = 2. 5 V from the power board." : "SERIALx_PROTOCOL = 23 (RCIN).", true);
-  if (mavlink) pair(nm.tx, "Laptop GCS", "WiFi Backpack", txK?.id === "nomad" ? "ok" : "info", txK?.id === "nomad" ? "The Nomad's ESP32-C3 Backpack bridges MAVLink to Mission Planner or QGroundControl (Backpack 1.5.0+)." : "Needs a TX module with a WiFi Backpack.");
+  if (mavlink) pair(link?.internal ? nm.radio : nm.tx, "Laptop (Mission Planner)", "WiFi Backpack · UDP", link?.backpack ? "ok" : link?.backpack === false ? "bad" : "warn",
+    link?.backpack ? `The ${link.internal ? radioK.short + "'s built-in" : link.name + "'s"} Backpack bridges MAVLink to Mission Planner over WiFi (Backpack 1.5.0+).` : "Needs a transmitter with a WiFi Backpack; not confirmed for this radio.", link?.internal);
   const kakute = /kakute/i.test(P("fc").text || "");
   const gpsKind = kbFor(P("gps").text);
   pair(nm.gps, nm.fc, gpsKind?.conn ? `UART + I²C · ${gpsKind.conn}` : "UART + I²C", !has(P("gps")) ? "bad" : kakute && gpsKind?.conn === "JST-GH" ? "warn" : "ok",
@@ -672,8 +690,8 @@ function analyse(d) {
   if (jet && cam) pair(cam.component.replace(/\s*CSI.*$/i, ""), jet.component.replace(/^NVIDIA\s+/i, "").replace(/\s*Dev Kit/i, ""), "CSI ribbon", "off", cam.compat || "");
   if (minutes && mission.minutes) pair(nm.batt, "Mission goal", "Flight time", minutes >= mission.minutes ? "ok" : minutes >= mission.minutes * 0.8 ? "warn" : "bad", `Model says about ${fmt(minutes)} min hover vs your ${mission.minutes} min goal.`);
 
-  const applied = Object.values(parts).filter((p) => p?.status === "decided");
-  return { parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
+  const applied = Object.values(parts).filter((p) => p?.status === "decided" && !p.agrees);
+  return { link, parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
 }
 
 /* ---------- render ---------- */
@@ -754,9 +772,13 @@ function renderSchematic(A) {
     jet: { x: 450, y: 400, w: 170, h: 56, t: "Companion", s: "Phase 2", st: "deferred" },
     cam: { x: 240, y: 400, w: 150, h: 56, t: "Perception cam", s: "Phase 2", st: "deferred" },
     vtx: { x: 20, y: 400, w: 150, h: 56, t: "FPV cam + VTX", s: "Phase 2", st: "deferred" },
-    radio: { x: 20, y: 520, w: 170, h: 60, t: "Radio", s: shortName(A.parts.radio, "Handheld radio"), s2: "Sticks + switches", st: partState(A.parts.radio) },
-    tx: { x: 250, y: 520, w: 170, h: 60, t: "TX module", s: shortName(A.parts.tx, "Not chosen"), s2: "In the radio's bay", st: partState(A.parts.tx) },
-    txbat: { x: 480, y: 520, w: 180, h: 60, t: "2S–4S LiPo", s: "Not in cart yet", s2: "Powers the TX >250 mW", st: A.txK?.id === "nomad" ? "missing" : "deferred" },
+    radio: { x: 20, y: 520, w: 170, h: 60, t: "Radio", s: shortName(A.parts.radio, "Handheld radio"), s2: A.link?.internal ? "Built-in ELRS + WiFi" : "Sticks + switches", st: partState(A.parts.radio) },
+    ...(A.parts.tx ? {
+      tx: { x: 250, y: 520, w: 170, h: 60, t: "TX module", s: shortName(A.parts.tx, "Not chosen"), s2: "In the radio's bay", st: partState(A.parts.tx) },
+      txbat: { x: 480, y: 520, w: 180, h: 60, t: "2S–4S LiPo", s: "Not in cart yet", s2: "Powers the TX >250 mW", st: A.txK?.id === "nomad" ? "missing" : "deferred" },
+    } : {
+      opt: { x: 250, y: 520, w: 190, h: 60, t: "TX module (optional)", s: "Not used now", s2: `Fits the ${A.radioK?.bay || ""} bay later`, st: "deferred" },
+    }),
     gcs: { x: 710, y: 520, w: 170, h: 60, t: "Laptop", s: "Mission Planner / QGC", st: "ok" },
   };
   const escSt = A.s.esc.found ? "ok" : partState(P("esc"));
@@ -784,9 +806,14 @@ function renderSchematic(A) {
   e += `<g opacity=".45">${wire("M535 400V288", "data", 2, "6 5")}${wire("M390 428H450", "data", 2, "6 5")}</g>`;
   // ground station
   e += `<line x1="0" x2="980" y1="488" y2="488" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="2 5"/>`;
-  e += wire("M190 550H250", "sig", 2, dash(N.tx));
-  e += wire("M480 550H420", "pwr", 3, dash(N.txbat));
-  e += wire("M335 580V605H795V580", "data", 2, "2 4");
+  if (N.tx) {
+    e += wire("M190 550H250", "sig", 2, dash(N.tx));
+    e += wire("M480 550H420", "pwr", 3, dash(N.txbat));
+    e += wire("M335 580V605H795V580", "data", 2, "2 4");
+  } else {
+    e += `<g opacity=".45">${wire("M190 550H250", "sig", 2, "6 5")}</g>`;
+    e += wire("M105 580V605H795V580", "data", 2, "2 4");
+  }
   const labels = [
     `<text x="20" y="22" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">AIRCRAFT</text>`,
     `<text x="20" y="508" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">GROUND STATION</text>`,
@@ -798,8 +825,8 @@ function renderSchematic(A) {
     label(542, 150, A.mavlink ? "MAVLink2" : "CRSF"),
     label(542, 164, "UART"),
     label(194, 543, `${A.radioK?.bay || "Module"} bay`),
-    label(424, 543, "XT30"),
-    label(565, 620, "WiFi (no wire)", "middle"),
+    ...(N.tx ? [label(424, 543, "XT30")] : []),
+    label(N.tx ? 565 : 450, 620, "WiFi (no wire) · MAVLink to Mission Planner", "middle"),
   ].join("");
   $("schematic").innerHTML = `<svg viewBox="0 0 980 630" width="980" height="630" role="img" aria-label="Wiring diagram: battery, power board, ESCs and motors; flight controller with receiver, GPS and buzzer; ground station radio, transmitter module, its battery and laptop">${e}${Object.values(N).map(drawBox).join("")}${labels}</svg>`;
 
@@ -815,10 +842,11 @@ const FLOW = { cmd: "s2", tel: "s1", msn: "i2c", sen: "s3", out: "sig", pwr: "pw
 function renderSignals(A) {
   const P = (r) => A.parts[r];
   const proto = A.mavlink ? "MAVLink2" : "CRSF";
-  const tx = shortName(A.parts.tx, "TX module"), rx = shortName(P("rx"), "Receiver"), fc = shortName(P("fc"), "Flight controller");
+  const internal = !A.parts.tx && A.link?.internal;
+  const tx = internal ? A.link.name : shortName(A.parts.tx, "TX module"), rx = shortName(P("rx"), "Receiver"), fc = shortName(P("fc"), "Flight controller");
   const N = {
     hands: { x: 20, y: 30, w: 200, h: 62, t: "You: sticks + switches", s: shortName(A.parts.radio, "Handheld radio"), s2: "EdgeTX mixes channels", st: partState(A.parts.radio) },
-    tx: { x: 20, y: 170, w: 200, h: 62, t: tx, s: "ELRS transmitter", s2: A.txK?.id === "nomad" ? "ESP32 + WiFi Backpack" : "", st: partState(A.parts.tx) },
+    tx: { x: 20, y: 170, w: 200, h: 62, t: tx, s: internal ? "2.4 GHz, inside the radio" : "ELRS transmitter", s2: A.link?.backpack ? "+ WiFi Backpack" : "", st: partState(internal ? A.parts.radio : A.parts.tx) },
     gcs: { x: 20, y: 330, w: 200, h: 62, t: "Laptop GCS", s: "Mission Planner / QGC", s2: "Plans missions", st: "ok" },
     rx: { x: 430, y: 170, w: 170, h: 62, t: rx, s: "ELRS receiver", s2: `${proto} to the FC`, st: partState(P("rx"), A.rxK?.kind === "tx-module") },
     fc: { x: 650, y: 150, w: 170, h: 100, t: fc, s: "ArduPilot", s2: "IMU + baro on board", st: partState(P("fc")) },
@@ -835,8 +863,8 @@ function renderSignals(A) {
   const f = (d, k, dashed) => wire(d, FLOW[k], k === "pwr" ? 3 : 2.2, dashed ? "6 5" : "", k);
   let e = `<rect x="232" y="150" width="186" height="100" rx="8" fill="var(--sunk)" stroke="var(--line)" stroke-dasharray="3 4"/>`;
   e += label(325, 168, "ExpressLRS radio link", "middle", "ink");
-  e += label(325, 240, A.txK?.id === "nomad" && A.rxK?.id === "xr3" ? "900 MHz or 2.4 GHz" : "2.4 GHz / 900 MHz", "middle");
-  e += f("M120 92V168", "cmd") + label(128, 128, `Stick commands (CRSF, ${A.radioK?.bay || "module"} bay)`);
+  e += label(325, 240, A.link?.bands || "2.4 GHz / 900 MHz", "middle");
+  e += f("M120 92V168", "cmd") + label(128, 128, internal ? "Stick commands (inside the radio)" : `Stick commands (CRSF, ${A.radioK?.bay || "module"} bay)`);
   e += f("M220 192H428", "cmd") + label(236, 186, "Commands + missions ▸");
   e += f("M430 214H222", "tel") + label(236, 228, "◂ Telemetry");
   e += f("M600 186H648", "cmd") + f("M650 214H602", "tel") + label(625, 166, proto, "middle");
@@ -847,7 +875,7 @@ function renderSignals(A) {
   e += f("M915 208V278", "pwr") + label(922, 248, "3-phase");
   e += f("M600 329H625V235H648", "pwr") + label(604, 346, "VBAT");
   e += `<g opacity=".5">${f("M725 252V328", "ghost", true)}${f("M745 330V254", "ghost", true)}${f("M600 435H735V390", "ghost", true)}${label(752, 300, "MAVLink (phase 2)")}</g>`;
-  $("signals").innerHTML = `<svg viewBox="0 0 980 470" width="980" height="470" role="img" aria-label="Signal flow: stick commands from the radio through the transmitter and receiver to the flight controller; telemetry back to the laptop; sensors in, motor commands out"><defs>${markers}</defs>${e}${Object.values(N).map(drawBox).join("")}</svg>`;
+  $("signals").innerHTML = `<svg viewBox="0 0 980 470" width="980" height="470" role="img" aria-label="Signal flow: stick commands from the radio's transmitter to the receiver to the flight controller; telemetry back to the laptop; sensors in, motor commands out"><defs>${markers}</defs>${e}${Object.values(N).map(drawBox).join("")}</svg>`;
   $("signal-legend").innerHTML = [["cmd", "Control commands"], ["tel", "Telemetry back to you"], ["msn", "Missions from the laptop"], ["sen", "Sensor data"], ["out", "Outputs to ESCs and buzzer"], ["pwr", "Power"]]
     .map(([k, t]) => `<span><i style="border-color:var(--${FLOW[k]})"></i>${t}</span>`).join("");
 
@@ -855,13 +883,13 @@ function renderSignals(A) {
   const stories = [
     ["Moving a stick", [
       `${shortName(A.parts.radio, "The radio")} reads the stick and EdgeTX turns it into channel values.`,
-      `The radio passes them to the ${tx} through the module bay pins (CRSF).`,
+      internal ? `The ${tx} module inside the radio picks them up directly.` : `The radio passes them to the ${tx} through the module bay pins (CRSF).`,
       `The ${tx} transmits them over ExpressLRS, many times a second.`,
       `The ${rx} receives them and hands them to the ${fc} over a UART as ${proto}.`,
       `ArduPilot mixes your command with the IMU${gpsOk ? " and GPS" : ""} and sets each ESC's speed. The ESCs drive the motors.`]],
     ["Flying a mission", [
       "Plan waypoints in Mission Planner or QGroundControl.",
-      A.mavlink ? `The laptop sends the mission over WiFi to the ${tx}'s Backpack.` : "The laptop needs a telemetry link to the aircraft first.",
+      A.mavlink ? `Mission Planner sends the mission over WiFi to the ${internal ? A.radioK.short : tx}'s Backpack.` : "The laptop needs a telemetry link to the aircraft first.",
       `It travels over the same ExpressLRS link to the ${rx} and is stored by ArduPilot.`,
       gpsOk ? "Flip the mode switch to Auto. ArduPilot flies the route using GPS." : "Auto mode needs a GPS, which is not chosen yet.",
       "Telemetry (position, battery, mode) returns the same way to the laptop. Your sticks still override."]],
