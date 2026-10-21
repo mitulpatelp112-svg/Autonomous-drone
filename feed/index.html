@@ -247,8 +247,8 @@ const TRIGGER_ID = "trig_01LJERC8mmmHL2Tz3PwJDpgo";
 const DECISIONS = {
   date: "2026-10-21",
   parts: {
-    radio: { label: "Radio controller", name: "RadioMaster Boxer (radio)", specs: "EdgeTX handheld radio with a standard JR module bay." },
-    tx: { label: "RC Transmitter", name: "RadioMaster Nomad (ELRS TX module)", specs: "Dual LR1121 (2.4 GHz + 900 MHz), 1 W per band, ESP32 with an ESP32-C3 WiFi Backpack, JR 5-pin socket. About $55 at one retailer." },
+    radio: { label: "Radio controller", name: "RadioMaster Pocket (ELRS radio)", specs: "Budget EdgeTX handheld radio (about $60–72) with a Nano module bay on the back and an internal 2.4 GHz ELRS module." },
+    tx: { label: "RC Transmitter", name: "RadioMaster Nomad (ELRS TX module)", specs: "Dual LR1121 (2.4 GHz + 900 MHz), 1 W per band, ESP32 with an ESP32-C3 WiFi Backpack, JR 5-pin socket plus an included Nano 8-pin adapter. About $55 at one retailer." },
     rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
     telem: { label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via Nomad WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
     gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
@@ -271,7 +271,8 @@ let FILTER = "issues";
 // verify:true marks claims that should be checked against the product manual.
 const KB = [
   { id: "nomad", re: /nomad/i, name: "RadioMaster Nomad (ELRS TX module)", short: "Nomad", kind: "tx-module", notes: [] },
-  { id: "boxer", re: /boxer/i, name: "RadioMaster Boxer (radio)", short: "Boxer", kind: "radio", notes: [] },
+  { id: "boxer", re: /boxer/i, name: "RadioMaster Boxer (radio)", short: "Boxer", kind: "radio", bay: "JR", notes: [] },
+  { id: "pocket", re: /\bpocket\b/i, name: "RadioMaster Pocket (ELRS radio)", short: "Pocket", kind: "radio", bay: "Nano", notes: [] },
   { id: "xr3", re: /\bxr3\b/i, name: "RadioMaster XR3 (ELRS receiver)", short: "XR3", kind: "rx", notes: [] },
   { id: "m10", re: /micro\s*m10/i, name: "Holybro Micro M10 (GPS + compass)", short: "Micro M10", kind: "gps", compass: true, conn: "JST-GH", weight: 14, notes: [] },
   { id: "sequre-m10", re: /sequre[-\s]?m10|m10-25/i, name: "Sequre M10-252Q (GPS + QMC5883 compass)", short: "Sequre M10-252Q", kind: "gps", compass: true, conn: "SH1.0 6-pin", weight: 12, notes: [] },
@@ -553,8 +554,11 @@ function analyse(d) {
       "MAVLink mode needs ESP-based hardware: the Nomad has an ESP32 with an ESP32-C3 Backpack, and the XR3 an ESP32-C3. Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.");
     add("ok", "Telemetry", `${rxK?.short || "Receiver"} talks MAVLink2 to ArduPilot over a UART`, "Wire it to a full UART on the flight controller and set that port's SERIALx_PROTOCOL to 2. Take the baud rate and remaining settings from the ExpressLRS MAVLink guide.", true);
   }
-  if (txK?.id === "nomad" && radioK?.id === "boxer")
-    add("ok", "Radio", "Nomad fits the Boxer's JR module bay", "Retailer listings give the Nomad a JR 5-pin socket (Nano adapter included), and RadioMaster lists the Boxer's bay as standard JR.", true);
+  const bayFit = txK?.id === "nomad" && radioK?.bay ? { JR: "the Nomad's own JR 5-pin socket", Nano: "the Nano 8-pin adapter that ships with the Nomad" }[radioK.bay] : null;
+  if (bayFit)
+    add("ok", "Radio", `Nomad fits the ${radioK.short}'s ${radioK.bay} module bay`, `It plugs in through ${bayFit}, per retailer listings. Turn off the radio's internal ELRS in EdgeTX so the Nomad does the transmitting.`, true);
+  if (radioK?.id === "pocket" && txK?.id === "nomad")
+    add("info", "Radio", "The Nomad sticks out from the back of the Pocket", "It is a larger module than the Pocket's bay is usually used with. It works, but expect a bulkier, back-heavy setup; a lanyard or neck strap helps.", true);
   if (txK?.id === "nomad")
     add("warn", "Radio", "Nomad needs its own 2S–4S LiPo above 250 mW", "Retailer listings say high output needs a battery on the Nomad's XT30 input. Add a small 2S–4S LiPo to the cart, or the link stays at 250 mW.", true);
   for (const p of Object.values(parts)) if (p?.status === "decided")
@@ -599,7 +603,7 @@ function analyse(d) {
     ...(mavlink ? [] : [{ from: "Telemetry radio", to: "Flight controller UART", kind: "data", spec: "MAVLink2", note: "SERIALx_PROTOCOL = 2. Or use ExpressLRS MAVLink telemetry and skip this radio.", missing: !has(P("telem")) }]),
   ];
   const ground = txP ? [
-    { from: radioK?.short || "Radio", to: `${txK?.short || "TX module"} (module bay)`, kind: "sig", spec: "JR bay, 5-pin", note: "Slide the module into the bay; the radio sends CRSF through the bay pins. Turn off the radio's internal RF in EdgeTX.", ground: true, verify: true },
+    { from: radioK?.short || "Radio", to: `${txK?.short || "TX module"} (module bay)`, kind: "sig", spec: radioK?.bay === "Nano" ? "Nano bay, 8-pin (adapter)" : "JR bay, 5-pin", note: `${radioK?.bay === "Nano" ? "Fit the Nomad's Nano adapter, then plug it into the bay. " : "Slide the module into the bay. "}The radio sends CRSF through the bay pins. Turn off the radio's internal RF in EdgeTX.`, ground: true, verify: true },
     ...(txK?.id === "nomad" ? [{ from: "2S–4S LiPo", to: "Nomad", kind: "pwr", spec: "XT30", note: "Needed for output above 250 mW. Not in your cart yet.", ground: true, missing: true }] : []),
     ...(mavlink ? [{ from: `${txK?.short || "TX"} WiFi Backpack`, to: "Laptop", kind: "data", spec: "WiFi, no wire", note: "Connect Mission Planner or QGroundControl to the Backpack's WiFi for MAVLink.", ground: true }] : []),
   ] : [];
@@ -651,8 +655,8 @@ function analyse(d) {
   const pOk = cartIn && s.motor.propMax ? cartIn >= (s.motor.propMin ?? 0) && cartIn <= s.motor.propMax : null;
   pair(nm.motor, nm.prop, "Prop adapter", pOk == null ? "warn" : pOk ? "ok" : "bad", pOk == null ? "Prop size unknown." : `${cartIn}" is ${pOk ? "inside" : "outside"} the motor's ${s.motor.propMin}–${s.motor.propMax}" range. Confirm the prop hub fits the motor's adapter.`, true);
   if (wb) pair(nm.prop, nm.frame, "Arm length", has(P("frame")) ? "info" : "bad", `Needs ≥ ${wb} mm motor-to-motor diagonal for ${cartIn}" props.`);
-  pair(nm.radio, nm.tx, "JR module bay", !txP || !radioP ? "bad" : txK?.id === "nomad" && radioK?.id === "boxer" ? "ok" : "info",
-    txK?.id === "nomad" && radioK?.id === "boxer" ? "Nomad has a JR 5-pin socket (Nano adapter included); the Boxer's bay is standard JR." : "Check the module fits the radio's bay.", true);
+  pair(nm.radio, nm.tx, `${radioK?.bay || "Module"} bay`, !txP || !radioP ? "bad" : bayFit ? "ok" : "info",
+    bayFit ? `The ${radioK.short}'s ${radioK.bay} bay takes the Nomad through ${bayFit}.` : "Check the module fits the radio's bay.", true);
   if (txK?.id === "nomad") pair("2S–4S LiPo", nm.tx, "XT30", "warn", "Needed above 250 mW output. Not in the cart yet.", true);
   const rxOk = has(P("rx")) && rxK?.kind !== "tx-module";
   pair(nm.tx, nm.rx, "ExpressLRS radio link", !rxOk ? "bad" : nomadXr3 ? "ok" : "info", nomadXr3 ? "Both LR1121 on ExpressLRS 3.5.0+. The XR3 uses one band at a time (no Gemini)." : "Both must run the same ExpressLRS version and band.");
@@ -793,7 +797,7 @@ function renderSchematic(A) {
     label(860, 142, "3-phase"),
     label(542, 150, A.mavlink ? "MAVLink2" : "CRSF"),
     label(542, 164, "UART"),
-    label(194, 543, "JR bay"),
+    label(194, 543, `${A.radioK?.bay || "Module"} bay`),
     label(424, 543, "XT30"),
     label(565, 620, "WiFi (no wire)", "middle"),
   ].join("");
@@ -832,7 +836,7 @@ function renderSignals(A) {
   let e = `<rect x="232" y="150" width="186" height="100" rx="8" fill="var(--sunk)" stroke="var(--line)" stroke-dasharray="3 4"/>`;
   e += label(325, 168, "ExpressLRS radio link", "middle", "ink");
   e += label(325, 240, A.txK?.id === "nomad" && A.rxK?.id === "xr3" ? "900 MHz or 2.4 GHz" : "2.4 GHz / 900 MHz", "middle");
-  e += f("M120 92V168", "cmd") + label(128, 128, `Stick commands (CRSF, JR bay)`);
+  e += f("M120 92V168", "cmd") + label(128, 128, `Stick commands (CRSF, ${A.radioK?.bay || "module"} bay)`);
   e += f("M220 192H428", "cmd") + label(236, 186, "Commands + missions ▸");
   e += f("M430 214H222", "tel") + label(236, 228, "◂ Telemetry");
   e += f("M600 186H648", "cmd") + f("M650 214H602", "tel") + label(625, 166, proto, "middle");
