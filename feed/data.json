@@ -2,287 +2,16 @@
  "source": {
   "file": "7inch_Drone_Master_Build_Sheet.xlsx",
   "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
-  "modified": "Tue, 20 Oct 2026 12:18:39 GMT",
-  "sha256": "d86f714019ebf964",
-  "synced_at": "2026-10-20T13:15:59+00:00",
+  "modified": "Wed, 21 Oct 2026 17:51:02 GMT",
+  "sha256": "9120cd0e16fcc426",
+  "synced_at": "2026-10-21T17:52:07+00:00",
   "sheets": [
-   "Master Build Sheet",
    "cart",
    "Motor",
    "Efficiency"
   ]
  },
- "master": {
-  "title": "7-INCH LONG-RANGE AUTONOMOUS QUADCOPTER  —  MASTER BUILD SHEET",
-  "mission": "Mission: ~30 min endurance · 200 g payload · 6S2P Li-ion · Jetson Orin Nano autonomy · AUW hard-locked 1.9 kg · Prices verified Jul 2026 (live-checked, vendor stock varies)",
-  "items": [
-   {
-    "system": "Propulsion",
-    "pick": "PRIMARY",
-    "component": "BrotherHobby Avenger 2806.5 1300KV",
-    "specs": "12N14P, N52H magnets, Ti hollow shaft, 4-6S, ~41g. Low-KV for 6S endurance; spec'd for 6-8\" props. Hover ~475g/motor sits in efficiency valley (~5 g/W).",
-    "weight_g": 41,
-    "unit_price": 24.99,
-    "qty": 4,
-    "line_total": 99.96,
-    "compat": "19x19 bolt pattern — frame arms MUST be 19x19 (not 16x16). 6S ✓. M5 shaft.",
-    "source": "rotorriot.com / addictiverc.com"
-   },
-   {
-    "system": "Propulsion",
-    "pick": "backup",
-    "component": "iFlight XING 2806.5 1300KV",
-    "specs": "Heavier (~53g) but more peak-thrust reserve (2586g @7x4). Same 6S low-KV class.",
-    "weight_g": 53,
-    "unit_price": 28,
-    "qty": 4,
-    "line_total": 112,
-    "compat": "Confirm 19x19 or M3 pattern vs frame. 6S ✓.",
-    "source": "iflight-rc.com"
-   },
-   {
-    "system": "ESC",
-    "pick": "PRIMARY",
-    "component": "JHEMCU AM32 60A 4-in-1",
-    "specs": "True 60A cont/ch, onboard current sensor, AM32 firmware (actively developed). Hover draw only ~4.3A/motor = huge headroom. Telemetry for Pixhawk.",
-    "weight_g": 15.4,
-    "unit_price": 37.5,
-    "qty": 1,
-    "line_total": 37.5,
-    "compat": "AM32 ✓ PX4/ArduPilot. 6S ✓. 30.5x30.5 mount — match to FC/frame.",
-    "source": "jhemcu / rdq / getfpv"
-   },
-   {
-    "system": "ESC",
-    "pick": "backup",
-    "component": "Holybro Tekko32 F4 60A 4-in-1",
-    "specs": "50A cont/60A burst, F4 processor, proven. Brand-matches Pixhawk.",
-    "weight_g": 15.6,
-    "unit_price": 59,
-    "qty": 1,
-    "line_total": 59,
-    "compat": "BLHeli_32 (note: no longer developed). 6S ✓. Pixhawk-native.",
-    "source": "holybro.com"
-   },
-   {
-    "system": "Propeller",
-    "pick": "PRIMARY",
-    "component": "Gemfan LR7035 (7x3.5 bi-blade)",
-    "specs": "3.5\" pitch bi-blade = max endurance (pitch is #1 endurance lever). Cruises 3-4A/motor for 30+ min.",
-    "weight_g": 4.2,
-    "unit_price": 3.5,
-    "qty": 2,
-    "line_total": 7,
-    "compat": "7\" ✓ on 2806.5. Bi-blade ✓. M5 bore ✓. Buy multi-packs to trial.",
-    "source": "gemfan / rdq (4-pack)"
-   },
-   {
-    "system": "Propeller",
-    "pick": "backup",
-    "component": "Gemfan Flash 7042 (7x4.2 bi-blade)",
-    "specs": "4.2\" pitch — slightly more speed/thrust to trial vs LR7035. AVOID plain '7040' (often tri-blade).",
-    "weight_g": 4.5,
-    "unit_price": 3.5,
-    "qty": 2,
-    "line_total": 7,
-    "compat": "7\" ✓. Bi-blade ✓. M5 bore ✓.",
-    "source": "gemfan / getfpv"
-   },
-   {
-    "system": "Flight Controller",
-    "pick": "PRIMARY",
-    "component": "Holybro Pixhawk 6C",
-    "specs": "STM32H743 @480MHz, REDUNDANT IMUs (Bosch+InvenSense), vibration isolation + IMU heating, PX4 pre-installed. Redundancy = insurance for Jetson payload + autonomy.",
-    "weight_g": 34,
-    "unit_price": 140,
-    "qty": 1,
-    "line_total": 140,
-    "compat": "PX4/ArduPilot ✓ (free). MAVLink→Jetson ✓. M10 GPS listed as supported.",
-    "source": "holybro.com"
-   },
-   {
-    "system": "Flight Controller",
-    "pick": "backup",
-    "component": "Holybro Kakute H7 v2",
-    "specs": "H7-class, SINGLE IMU, dual ESC ports, BT tuning. Cheaper but no IMU redundancy + more DIY wiring.",
-    "weight_g": 8,
-    "unit_price": 63,
-    "qty": 1,
-    "line_total": 63,
-    "compat": "ArduPilot ✓. 6S ✓. Single-IMU = elevated risk on autonomous rig.",
-    "source": "holybro.com"
-   },
-   {
-    "system": "GPS + Compass",
-    "pick": "PRIMARY",
-    "component": "Holybro Micro M10",
-    "specs": "u-blox M10, 4 constellations (GPS+Galileo+GLONASS+BeiDou), built-in compass. ~few-metre accuracy = plenty for waypoints/RTH. Lightest option.",
-    "weight_g": 14,
-    "unit_price": 27.99,
-    "qty": 1,
-    "line_total": 27.99,
-    "compat": "Pixhawk 6C-native (plug & play). UART ✓.",
-    "source": "holybro.com ($27.99)"
-   },
-   {
-    "system": "GPS + Compass",
-    "pick": "backup",
-    "component": "Holybro M10 (full, cased)",
-    "specs": "Same chip + buzzer, safety switch, LED. ~15-18g heavier, convenience features only.",
-    "weight_g": 31,
-    "unit_price": 45,
-    "qty": 1,
-    "line_total": 45,
-    "compat": "Pixhawk 6C-native ✓.",
-    "source": "holybro.com"
-   },
-   {
-    "system": "Battery Cells",
-    "pick": "PRIMARY",
-    "component": "Molicel P42A 21700  (6S2P = 12 cells)",
-    "specs": "4.2Ah, 45A cont/cell. Pack: ~181 Wh, 90A ceiling (peak draw only ~45A). Best Wh/$ (2.52). Long-range champion cell.",
-    "weight_g": 941,
-    "unit_price": 5.99,
-    "qty": 12,
-    "line_total": 71.88,
-    "compat": "6S nominal 22.2V ✓ motors. 90A >> 45A peak ✓. Needs spot-welding + BMS/wiring.",
-    "source": "18650batterystore.com"
-   },
-   {
-    "system": "Battery Cells",
-    "pick": "backup",
-    "component": "Samsung 50S 21700  (6S2P = 12 cells)",
-    "specs": "5.0Ah — MOST energy (~216 Wh) & lightest pack (927g). +19% flight time for +$24. 50A ceiling still > 45A peak.",
-    "weight_g": 927,
-    "unit_price": 7.99,
-    "qty": 12,
-    "line_total": 95.88,
-    "compat": "6S ✓. 50A > 45A peak ✓ (less margin, fine for endurance cruise).",
-    "source": "18650batterystore.com"
-   },
-   {
-    "system": "FPV Camera",
-    "pick": "PRIMARY",
-    "component": "Caddx Ratel 2 (analog)",
-    "specs": "1/1.8\" sensor, 1200TVL, superb low-light/dusk. Pilot's flying feed — INDEPENDENT of Jetson (see & fly home if AI stack crashes).",
-    "weight_g": 9,
-    "unit_price": 35,
-    "qty": 1,
-    "line_total": 35,
-    "compat": "Analog → pairs w/ VTX. 5-25V ✓. Standard 19x19/nano mount.",
-    "source": "caddxfpv.com"
-   },
-   {
-    "system": "FPV Camera",
-    "pick": "budget",
-    "component": "Caddx Ant (analog)",
-    "specs": "Same 1200TVL Caddx sharpness, 165° FOV, 2g. Gives up only dusk low-light vs Ratel. Saves ~$20 + 7g.",
-    "weight_g": 2,
-    "unit_price": 16.5,
-    "qty": 1,
-    "line_total": 16.5,
-    "compat": "Analog → VTX. 5-25V ✓.",
-    "source": "caddxfpv.com (~$15-18)"
-   },
-   {
-    "system": "Perception Camera",
-    "pick": "PRIMARY",
-    "component": "Arducam IMX477 CSI (Jetson)",
-    "specs": "12.3MP, 4-lane MIPI CSI-2, native Jetson Orin kernel driver. Wide 100° FOV version for detection. Feeds YOLO/RF-DETR on Jetson.",
-    "weight_g": 30,
-    "unit_price": 55,
-    "qty": 1,
-    "line_total": 55,
-    "compat": "Jetson Orin Nano dev-kit CSI ✓ (native driver, JetPack-version specific). 22-pin FFC incl.",
-    "source": "arducam.com"
-   },
-   {
-    "system": "Perception Camera",
-    "pick": "budget",
-    "component": "Arducam IMX219 CSI (Jetson)",
-    "specs": "8MP, same native Jetson driver, wide-angle options. Perception downscales to ~640px anyway → megapixels wasted. Barely a compromise.",
-    "weight_g": 15,
-    "unit_price": 22.5,
-    "qty": 1,
-    "line_total": 22.5,
-    "compat": "Jetson Orin Nano CSI ✓ (native). Saves ~$30.",
-    "source": "arducam.com (~$20-25)"
-   },
-   {
-    "system": "Video TX (VTX)",
-    "pick": "PRIMARY",
-    "component": "RushFPV Tank Solo (5.8GHz)",
-    "specs": "Up to 1W+, CNC alu shell = heat sink, pit mode + SmartAudio. ~8W draw at full power (already in flight-time math; dial down to save airtime).",
-    "weight_g": 9,
-    "unit_price": 30,
-    "qty": 1,
-    "line_total": 30,
-    "compat": "Analog 5.8G ✓ Ratel/Ant. SmartAudio→FC ✓. 6S/BEC ✓.",
-    "source": "progressiverc / pyrodrone"
-   },
-   {
-    "system": "Video TX (VTX)",
-    "pick": "backup",
-    "component": "TBS Unify Pro32 HV (5.8GHz)",
-    "specs": "Premium: cleanest signal, accurate power, excellent cooling. 800mW-1W.",
-    "weight_g": 8,
-    "unit_price": 45,
-    "qty": 1,
-    "line_total": 45,
-    "compat": "Analog 5.8G ✓. SmartAudio ✓.",
-    "source": "team-blacksheep.com"
-   },
-   {
-    "system": "RC Receiver",
-    "pick": "PRIMARY",
-    "component": "Happymodel ES900 Dual RX (900MHz ELRS)",
-    "specs": "TRUE diversity (dual SX1276, 2 antennas), TCXO, 1.5g. LQ >95% past 8km vs 2.4G dropping at 3.5km. Punches through trees/walls.",
-    "weight_g": 1.5,
-    "unit_price": 24,
-    "qty": 1,
-    "line_total": 24,
-    "compat": "ExpressLRS ✓ RadioMaster TX16S. UART→FC ✓. 915MHz (US).",
-    "source": "racedayquads / wrekd"
-   },
-   {
-    "system": "RC Receiver",
-    "pick": "backup",
-    "component": "Happymodel EP1 (2.4GHz ELRS)",
-    "specs": "Tiny, light, reliable, low-latency. Fallback when range isn't priority. Cheaper.",
-    "weight_g": 0.4,
-    "unit_price": 17,
-    "qty": 1,
-    "line_total": 17,
-    "compat": "ExpressLRS ✓ TX16S. 2.4G.",
-    "source": "getfpv / amazon"
-   },
-   {
-    "system": "Telemetry Radio",
-    "pick": "PRIMARY",
-    "component": "Holybro SiK V3 (915MHz, 500mW/1W pair)",
-    "specs": "Two-way MAVLink data link FC↔ground station (GPS/voltage/alt + waypoints). High-power = several km to match control/video range. Sold as pair.",
-    "weight_g": 15,
-    "unit_price": 50,
-    "qty": 1,
-    "line_total": 50,
-    "compat": "Pixhawk-native, MAVLink/QGC/PX4 pre-tuned ✓. 915MHz (US). TELEM port ✓.",
-    "source": "holybro.com"
-   },
-   {
-    "system": "Companion Computer",
-    "pick": "(planned)",
-    "component": "NVIDIA Jetson Orin Nano 8GB Dev Kit",
-    "specs": "High-level autonomy + NL commands + perception over MAVLink. ~12W active (in flight math). Upgrade path → Orin NX 16GB.",
-    "weight_g": 180,
-    "unit_price": 249,
-    "qty": 1,
-    "line_total": 249,
-    "compat": "USB-UART adapter to Pixhawk TELEM2 (not GPIO UART). CSI camera ✓.",
-    "source": "nvidia / seeedstudio"
-   }
-  ],
-  "subtotal": 578.33
- },
+ "master": null,
  "cart": {
   "items": [
    {
@@ -307,7 +36,7 @@
    },
    {
     "component": "GPS",
-    "link": null,
+    "link": "https://pyrodrone.com/collections/gps-and-lost-model-devices/products/sequre-m10-252q-gps-module-small-size-fast-positioning-bf-inav-ardupilot-fixed-wing-drone",
     "specs": null
    },
    {
@@ -347,12 +76,12 @@
    },
    {
     "component": "RC Receiver rX",
-    "link": "https://www.getfpv.com/radiomaster-nomad-dual-1w-gemini-xrossband-expresslrs-module.html?glid=CjwKCAjwrbfWBhAeEiwAc2e6PnXWrytwqx28rOA6ijv6ADIsZrlkb7t3EhAgM6zDktg6y9ug1cgzaBoC3JUQAvD_BwE&gc_id=21805212384&g_special_campaign=true&gad_source=1&gad_campaignid=21805212384&gbraid=0AAAAAD8cN5KLjjgtst7YlpYWeRttrgAMV&gclid=CjwKCAjwrbfWBhAeEiwAc2e6PnXWrytwqx28rOA6ijv6ADIsZrlkb7t3EhAgM6zDktg6y9ug1cgzaBoC3JUQAvD_BwE",
+    "link": "RX",
     "specs": null
    },
    {
     "component": "Telemetry Radio tx",
-    "link": "https://www.readymaderc.com/products/details/85685-radiomaster-boxer-radio-control-system-expresslrs?srsltid=AU7gw4W8NwTikSoYhHfrSav1Grzz7XtlWACKgMlfXIS0euYhpXbqc5_Ij7M",
+    "link": "TX",
     "specs": null
    },
    {

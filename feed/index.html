@@ -125,6 +125,9 @@ tr.ghost td { color: var(--muted); }
 .tools input { margin-top: 4px; accent-color: var(--accent); }
 .tools .why { color: var(--muted); font-size: .82rem; display: block; }
 
+.cols3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font-size: .88rem; }
+.decided-note { font-size: .85rem; border-left: 3px solid var(--accent); padding-left: 10px; max-width: 70ch; }
 .ask-out { white-space: pre-wrap; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: .9rem; max-height: 520px; overflow: auto; }
 .empty { padding: 40px 0; text-align: center; color: var(--muted); }
 footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
@@ -147,6 +150,7 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
       <span class="eyebrow" id="file-name">Excel build sheet</span>
       <h1 id="build-title">Drone build bench</h1>
       <p class="mission" id="mission">Loading your build sheet…</p>
+      <p class="decided-note" id="decided-note" hidden></p>
     </div>
     <div class="sync">
       <div class="meta">
@@ -175,7 +179,7 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
   </section>
 
   <section class="panel" aria-labelledby="wire-h">
-    <div class="panel-head"><h2 id="wire-h">Wiring</h2><span class="small muted">Drawn from the parts in your cart. Dashed boxes are missing; faded boxes are skipped for now.</span></div>
+    <div class="panel-head"><h2 id="wire-h">Wiring</h2><span class="small muted">Drawn from your cart. Accent boxes were chosen in chat, dashed red boxes are missing, faded boxes are phase 2.</span></div>
     <div class="legend">
       <span><i style="border-color:var(--pwr)"></i>Battery power</span>
       <span><i style="border-color:var(--sig)"></i>Motor signal</span>
@@ -184,6 +188,18 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
     </div>
     <div class="scroll" id="schematic"></div>
     <div class="scroll"><table id="wire-table"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="sig-h">
+    <div class="panel-head"><h2 id="sig-h">Signal flow</h2><span class="small muted">Where each command and reading travels, from your hands to the motors and back.</span></div>
+    <div class="legend" id="signal-legend"></div>
+    <div class="scroll" id="signals"></div>
+    <div class="cols3" id="signal-stories"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="pairs-h">
+    <div class="panel-head"><h2 id="pairs-h">Part-to-part compatibility</h2><span class="small muted" id="pairs-sum"></span></div>
+    <div class="scroll"><table id="pairs-table"></table></div>
   </section>
 
   <section class="panel" aria-labelledby="model-h">
@@ -227,6 +243,18 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
 // Set when the scheduled "refresh" task is created; the Update button fires it.
 const TRIGGER_ID = "trig_01LJERC8mmmHL2Tz3PwJDpgo";
 
+// Parts chosen in chat that are not in the Excel cart yet. A real cart entry for the same role always wins.
+const DECISIONS = {
+  date: "2026-10-21",
+  parts: {
+    radio: { label: "Radio controller", name: "RadioMaster Boxer (radio)", specs: "EdgeTX handheld radio with a standard JR module bay." },
+    tx: { label: "RC Transmitter", name: "RadioMaster Nomad (ELRS TX module)", specs: "Dual LR1121 (2.4 GHz + 900 MHz), 1 W per band, ESP32 with an ESP32-C3 WiFi Backpack, JR 5-pin socket. About $55 at one retailer." },
+    rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
+    telem: { label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via Nomad WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
+    gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
+  },
+};
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n, d = 0) => (n == null || !isFinite(n) ? "–" : Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -242,21 +270,20 @@ let FILTER = "issues";
 /* ---------- reference knowledge for parts named in the sheet ---------- */
 // verify:true marks claims that should be checked against the product manual.
 const KB = [
-  { re: /nomad/i, name: "RadioMaster Nomad (ELRS TX module)", kind: "tx-module", weight: 0,
-    notes: [{ sev: "bad", t: "Nomad is a transmitter module, not a receiver",
-      d: "It plugs into the module bay of your radio and sends the control link. The drone still needs an ExpressLRS receiver wired to the flight controller. If you keep the Nomad, pick a receiver that matches its band (a Gemini/Xrossband-capable RX gets the most out of it)." }] },
-  { re: /boxer/i, name: "RadioMaster Boxer (radio)", kind: "radio",
-    notes: [{ sev: "warn", t: "Boxer is your handheld radio, not a telemetry radio",
-      d: "It is the stick controller and already has ExpressLRS built in, so the Nomad is an optional range upgrade. A telemetry link to a ground station is a separate item: either a SiK radio pair or ExpressLRS MAVLink telemetry.", verify: true },
-      { sev: "info", t: "Check the Nomad fits the Boxer's module bay", d: "Confirm the bay size on both product pages before ordering.", verify: true }] },
-  { re: /kakute[-\s]?h7[-\s]?v2/i, name: "Holybro Kakute H7 v2", kind: "fc",
+  { id: "nomad", re: /nomad/i, name: "RadioMaster Nomad (ELRS TX module)", short: "Nomad", kind: "tx-module", notes: [] },
+  { id: "boxer", re: /boxer/i, name: "RadioMaster Boxer (radio)", short: "Boxer", kind: "radio", notes: [] },
+  { id: "xr3", re: /\bxr3\b/i, name: "RadioMaster XR3 (ELRS receiver)", short: "XR3", kind: "rx", notes: [] },
+  { id: "m10", re: /micro\s*m10/i, name: "Holybro Micro M10 (GPS + compass)", short: "Micro M10", kind: "gps", compass: true, conn: "JST-GH", weight: 14, notes: [] },
+  { id: "sequre-m10", re: /sequre[-\s]?m10|m10-25/i, name: "Sequre M10-252Q (GPS + QMC5883 compass)", short: "Sequre M10-252Q", kind: "gps", compass: true, conn: "SH1.0 6-pin", weight: 12, notes: [] },
+  { id: "kakute", re: /kakute[-\s]?h7[-\s]?v2/i, name: "Holybro Kakute H7 v2", short: "Kakute H7 v2", kind: "fc",
     notes: [{ sev: "warn", t: "Kakute H7 v2 has a single IMU",
       d: "Your master sheet already flags this as higher risk for autonomous flight. It is fine for first flights; the Pixhawk 6C (your plan's primary) adds a redundant IMU when you add autonomy." },
-      { sev: "info", t: "Kakute uses small JST-SH connectors", d: "Pixhawk-style GPS and telemetry cables (JST-GH) need an adapter cable or re-pinning. The \"plug & play\" note for the M10 GPS on your master sheet assumes a Pixhawk.", verify: true }] },
-  { re: /pixhawk\s*6c/i, name: "Holybro Pixhawk 6C", kind: "fc", notes: [] },
-  { re: /ovonic/i, name: "OVONIC 6S LiPo", kind: "battery", notes: [] },
+    ], weight: 8 },
+  { id: "pixhawk6c", re: /pixhawk\s*6c/i, name: "Holybro Pixhawk 6C", short: "Pixhawk 6C", kind: "fc", notes: [] },
+  { id: "ovonic", re: /ovonic/i, name: "OVONIC 6S LiPo", short: "OVONIC 6S", kind: "battery", notes: [] },
 ];
 const kbFor = (text) => KB.find((k) => k.re.test(text || ""));
+const has = (p) => !!p && (p.status === "chosen" || p.status === "decided");
 
 /* ---------- reading the sheet ---------- */
 const ROLES = [
@@ -264,7 +291,7 @@ const ROLES = [
   ["gps", /\bgps\b/i], ["fc", /flight controller|\bfc\b/i], ["compass", /compass/i], ["battery", /battery/i],
   ["frame", /frame/i], ["fpv", /fpv cam/i], ["percam", /perception/i], ["vtx", /vtx|video trans/i],
   ["rx", /receiver|\brx\b/i], ["telem", /telemetry/i], ["companion", /companion/i], ["pdb", /power dist|\bbec\b|\bpdb\b/i],
-  ["antenna", /antenna/i], ["wiring", /wiring|connector/i],
+  ["antenna", /antenna/i], ["wiring", /wiring|connector/i], ["tx", /transmitter|\btx module\b/i], ["radio", /radio controller|handset|^radio$/i],
 ];
 const roleOf = (name) => (ROLES.find(([, re]) => re.test(name || "")) || ["other"])[0];
 
@@ -289,8 +316,16 @@ function cartParts(d) {
   for (const it of d.cart?.items || []) {
     const role = roleOf(it.component);
     const text = it.link || "";
-    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : "chosen";
+    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : /^(rx|tx|tbd|todo|\?+|-+)$/i.test(text.trim()) ? "placeholder" : "chosen";
     parts[role] = { role, label: it.component, text, specs: it.specs || "", status, name: status === "chosen" ? niceName(text) : "", url: linkOf(text) };
+  }
+  // The sheet lists the TX module under "RC Receiver" and the radio under "Telemetry"; move them to their real roles.
+  const kindOf = (p) => (p?.status === "chosen" ? kbFor(p.text)?.kind : null);
+  if (kindOf(parts.rx) === "tx-module" && !parts.tx) { parts.tx = { ...parts.rx, role: "tx", movedFrom: parts.rx.label }; delete parts.rx; }
+  if (kindOf(parts.telem) === "radio" && !parts.radio) { parts.radio = { ...parts.telem, role: "radio", movedFrom: parts.telem.label }; delete parts.telem; }
+  for (const [role, dd] of Object.entries(DECISIONS.parts)) {
+    if (parts[role]?.status === "chosen") continue;
+    parts[role] = { role, label: parts[role]?.label || dd.label, text: dd.name, specs: dd.specs, status: "decided", name: dd.name, url: dd.url || null, placeholder: parts[role]?.status === "placeholder" ? parts[role].text : null };
   }
   return parts;
 }
@@ -335,6 +370,12 @@ function parseMission(m) {
   };
 }
 
+// Last values seen on the "Master Build Sheet" tab (synced 2026-10-20), used if that tab is removed.
+const FALLBACK = {
+  mission: "~30 min endurance · 200 g payload · Jetson Orin Nano autonomy",
+  companion: { component: "NVIDIA Jetson Orin Nano 8GB Dev Kit", weight_g: 180, specs: "~12W active", compat: "USB-UART adapter to the flight controller's TELEM UART (not GPIO UART). CSI camera ✓." },
+  perception: { component: "Arducam IMX477 CSI (Jetson)", weight_g: 30, compat: "Jetson Orin Nano dev-kit CSI ✓ (native driver, JetPack-version specific). 22-pin FFC incl." },
+};
 const masterPick = (d, sys, pick = /primary|planned/i) =>
   (d.master?.items || []).find((i) => (i.system || "").toLowerCase().includes(sys) && pick.test(i.pick || ""));
 
@@ -367,7 +408,7 @@ const CONN_A = { XT30: 30, XT60: 60, XT90: 90, EC5: 120, AS150: 150 };
 function analyse(d) {
   const parts = cartParts(d);
   const s = readSpecs(parts);
-  const mission = parseMission(d.master?.mission);
+  const mission = d.master?.mission ? parseMission(d.master.mission) : { ...parseMission(FALLBACK.mission), auwKg: null, fallback: true };
   const eff = d.efficiency || {};
   const volts = [...new Set((d.motor?.points || []).map((p) => p.v))].sort((a, b) => a - b);
   const battV = s.battery.cells ? +(s.battery.cells * 3.7).toFixed(1) : null;
@@ -384,7 +425,7 @@ function analyse(d) {
   const gpsPlan = masterPick(d, "gps");
   const capWh = s.battery.mah && battV ? s.battery.mah / 1000 * battV : null;
   const defaults = {
-    motorG: s.motor.weight ?? 80, escG: 28, propG: 25, fcG: fcRow?.weight_g ?? 10, gpsG: gpsPlan?.weight_g ?? 15, rxG: 3,
+    motorG: s.motor.weight ?? 80, escG: 28, propG: 25, fcG: fcRow?.weight_g ?? kbFor(parts.fc?.text)?.weight ?? 10, gpsG: kbFor(parts.gps?.text)?.weight ?? gpsPlan?.weight_g ?? 15, rxG: 3,
     battG: capWh ? Math.round(capWh / 0.145) : 750, frameG: 550, wiringG: 120, payloadG: mission.payload ?? 200,
     usable: 80, avionicsW: 5, mah: s.battery.mah ?? 5000,
   };
@@ -401,7 +442,7 @@ function analyse(d) {
   const hoverPct = top ? hoverPull / top.pull * 100 : null;
   const outOfData = top && hoverPull > top.pull;
   // phase 2: add the planned Jetson + perception camera from the master sheet
-  const jet = masterPick(d, "companion"), cam = masterPick(d, "perception");
+  const jet = masterPick(d, "companion") || (d.master ? null : FALLBACK.companion), cam = masterPick(d, "perception") || (d.master ? null : FALLBACK.perception);
   const addG = (jet?.weight_g || 0) + (cam?.weight_g || 0);
   const jetW = rx(jet?.specs, /~?(\d+)\s*W\b/i) ?? 12;
   const iHover2 = currentFor(curve, (auw + addG) / 4);
@@ -438,12 +479,12 @@ function analyse(d) {
     add(ok ? "ok" : "warn", "Props", `${prop} props ${ok ? "are inside" : "are outside"} the motor's ${s.motor.propMin}–${s.motor.propMax}" range`,
       eff.choice ? `This is the combo marked "${eff.choice.note}" on your Efficiency sheet. Its best-balance pick is ${eff.best?.v} V · ${eff.best?.prop}.` : "");
   }
-  if (P("prop").status === "chosen")
+  if (has(P("prop")))
     add("warn", "Props", "Confirm the prop listing matches your chosen size and the motor's prop mount",
       `The prop row links to ${P("prop").name || "a listing"} without a size. Check it is ${prop} and that its hub fits the ${s.motor.model || "motor"}'s prop adapter${s.motor.shaft ? ` (${s.motor.shaft} mm shaft)` : ""}. Buy CW and CCW pairs, plus spares.`);
 
   // ESC
-  if (!s.esc.found && P("esc").status !== "chosen")
+  if (!s.esc.found && !has(P("esc")))
     add("bad", "ESC", "No ESC chosen", "Pick four ESCs (or a 4-in-1) rated for 6S with at least 30% headroom over the motor's peak current.");
   else if (s.esc.cont && top) {
     const head = s.esc.cont / top.i;
@@ -474,38 +515,65 @@ function analyse(d) {
 
   // flight controller
   const fcK = kbFor(P("fc").text);
-  if (P("fc").status !== "chosen") add("bad", "Flight control", "No flight controller chosen", "");
+  if (!has(P("fc"))) add("bad", "Flight control", "No flight controller chosen", "");
   for (const n of fcK?.notes || []) add(n.sev, "Flight control", n.t, n.d, n.verify);
 
   // GPS / compass for autonomy
-  if (P("gps").status !== "chosen")
+  if (!has(P("gps")))
     add("bad", "Navigation", "No GPS chosen, so autonomous flight is not possible yet",
-      `Waypoints, position hold and return-to-launch need GPS. Your master sheet's pick is ${gpsPlan?.component ?? "a u-blox M10 module"}${gpsPlan?.weight_g ? ` (${gpsPlan.weight_g} g, $${gpsPlan.unit_price})` : ""}, which includes a compass, so it would also fill the Compass row.`);
-  if (P("compass").status !== "chosen" && !(P("gps").status === "chosen" && /m10|compass/i.test(P("gps").text)))
+      `Waypoints, position hold and return-to-launch need GPS. A good pick is ${gpsPlan?.component ?? "a u-blox M10 module with a compass"}${gpsPlan?.weight_g ? ` (${gpsPlan.weight_g} g, $${gpsPlan.unit_price})` : ""}, which includes a compass, so it would also fill the Compass row.`);
+  const gpsK = kbFor(P("gps").text);
+  if (gpsK?.compass) add("ok", "Navigation", `${gpsK.short} includes a compass`, "So the skipped Compass row is covered: the GPS gives position over a UART and heading over I²C.");
+  if (has(P("gps")) && gpsK?.id === "sequre-m10" && /kakute/i.test(P("fc").text || ""))
+    add("ok", "Navigation", "Sequre M10-252Q plugs straight into the Kakute's connector style", "Listings give it a 6-pin SH1.0 socket plus solder pads, 3.3–5 V input and 12 g. Check the pin order against the Kakute pinout before plugging in; swap pins if TX/RX or SDA/SCL differ.", true);
+  if (has(P("gps")) && gpsK?.conn === "JST-GH" && /kakute/i.test(P("fc").text || ""))
+    add("info", "Navigation", "Kakute uses small JST-SH connectors", "Holybro GPS cables are JST-GH, so you need an adapter cable or re-pinning.", true);
+  if (!has(P("compass")) && !(has(P("gps")) && (gpsK?.compass || /compass/i.test(P("gps").text))))
     add("warn", "Navigation", "Compass is skipped",
       "OK for first manual flights. For autonomous modes, use a GPS module with a built-in compass (one item instead of two).", true);
 
   // radio link
-  const rxK = kbFor(P("rx").text);
-  if (P("rx").status !== "chosen") add("bad", "Radio", "No receiver chosen", "");
-  for (const n of rxK?.notes || []) add(n.sev, "Radio", n.t, n.d, n.verify);
-  const tK = kbFor(P("telem").text);
-  for (const n of tK?.notes || []) add(n.sev, "Radio", n.t, n.d, n.verify);
+  const txP = parts.tx, radioP = parts.radio;
+  const rxK = kbFor(P("rx").text), txK = kbFor(txP?.text), radioK = kbFor(radioP?.text), tK = kbFor(P("telem").text);
+  const mavlink = /mavlink/i.test(P("telem").text || "") && /elrs|expresslrs/i.test(P("telem").text || "");
+  const nomadXr3 = txK?.id === "nomad" && rxK?.id === "xr3";
+  if (!has(P("rx"))) add("bad", "Radio", "No receiver chosen", "The drone needs an ExpressLRS receiver wired to the flight controller.");
+  else if (rxK?.kind === "tx-module") add("bad", "Radio", "The receiver row holds a transmitter module", "The drone needs an ExpressLRS receiver wired to the flight controller.");
+  if (!txP && !radioP) add("bad", "Radio", "No radio or transmitter chosen", "");
+  if (txP?.movedFrom) add("warn", "Radio", `${txK?.short || "The TX module"} is listed under "${txP.movedFrom}", but it is your transmitter`,
+    `It goes in the radio's module bay, not on the drone. On the cart sheet, move it to an "RC Transmitter" row and put the receiver under "${txP.movedFrom}".`);
+  if (radioP?.movedFrom) add("info", "Radio", `${radioK?.short || "The radio"} is listed under "${radioP.movedFrom}", but it is your handheld radio`,
+    "It holds the sticks and switches and feeds the transmitter module. Telemetry now rides on the ExpressLRS link instead of a separate radio. You can rename that row \"Radio controller\".");
+  if (nomadXr3) {
+    add("ok", "Radio", "Nomad and XR3 use the same ExpressLRS radio chip", "Both use the Semtech LR1121, so they bind on 2.4 GHz or 900 MHz. Flash both to ExpressLRS 3.5.0 or newer.");
+    add("info", "Radio", "XR3 uses one band at a time", "It has a single LR1121, so the Nomad's dual-band Gemini mode is not available. Use 900 MHz for range or 2.4 GHz for faster MAVLink. Full Gemini needs a dual-radio receiver such as the BetaFPV SuperX Nano (about $32).", true);
+  }
+  if (mavlink) {
+    add(txK?.id === "nomad" && rxK?.id === "xr3" ? "ok" : "info", "Telemetry", "MAVLink over ExpressLRS is supported at both ends",
+      "MAVLink mode needs ESP-based hardware: the Nomad has an ESP32 with an ESP32-C3 Backpack, and the XR3 an ESP32-C3. Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.");
+    add("ok", "Telemetry", `${rxK?.short || "Receiver"} talks MAVLink2 to ArduPilot over a UART`, "Wire it to a full UART on the flight controller and set that port's SERIALx_PROTOCOL to 2. Take the baud rate and remaining settings from the ExpressLRS MAVLink guide.", true);
+  }
+  if (txK?.id === "nomad" && radioK?.id === "boxer")
+    add("ok", "Radio", "Nomad fits the Boxer's JR module bay", "Retailer listings give the Nomad a JR 5-pin socket (Nano adapter included), and RadioMaster lists the Boxer's bay as standard JR.", true);
+  if (txK?.id === "nomad")
+    add("warn", "Radio", "Nomad needs its own 2S–4S LiPo above 250 mW", "Retailer listings say high output needs a battery on the Nomad's XT30 input. Add a small 2S–4S LiPo to the cart, or the link stays at 250 mW.", true);
+  for (const p of Object.values(parts)) if (p?.status === "decided")
+    add("info", "Not in Excel yet", `${p.name} was chosen in chat`, `${p.placeholder ? `Your "${p.label}" row just says "${p.placeholder}". ` : ""}Put the part name or link in the cart sheet (${p.label} row) and press Update to make it official. Until then the page fills this gap for you.`);
 
   // frame
+  const wb = cartIn ? Math.ceil(cartIn * 25.4 * 1.1 * Math.SQRT2 / 10) * 10 : null;
   if (cartIn) {
-    const wb = Math.ceil(cartIn * 25.4 * 1.1 * Math.SQRT2 / 10) * 10;
-    add(P("frame").status === "chosen" ? "info" : "bad", "Frame",
+    add(has(P("frame")) ? "info" : "bad", "Frame",
       `For ${cartIn}" props your self-designed frame needs ≥ ${wb} mm motor-to-motor diagonal`,
       `That keeps neighbouring prop tips about 10% of a prop diameter apart. ${s.motor.model || "The motors"} need arm mounts drilled for 16 mm or 19 mm hole spacing. Keep the flight controller on soft mounts near the centre of gravity.`);
   }
 
   // misc required items
-  if (P("pdb").status === "chosen" && !/\d+\s*A/i.test(P("pdb").text))
+  if (has(P("pdb")) && !/\d+\s*A/i.test(P("pdb").text))
     add("warn", "Power", "Power distribution board has no rating listed", `Choose one rated for ≥ ${fmt(Math.ceil((iMaxTotal || 60) / 10) * 10, 0)} A with a 5 V BEC output (your ESCs have none).`);
-  if (P("buzzer").status !== "chosen") add("info", "Extras", "Buzzer not chosen", "A few grams; it gives arming tones and a lost-drone alarm. Strongly recommended for a large aircraft.");
-  if (P("antenna").status !== "chosen") add("info", "Extras", "Antennas row is empty", "Most receivers and GPS modules ship with antennas; confirm for the ones you pick.");
-  if (P("wiring").status !== "chosen") add("info", "Extras", "Wiring & connectors row is empty", "See the wiring table and the tools list below for what to buy.");
+  if (!has(P("buzzer"))) add("info", "Extras", "Buzzer not chosen", "A few grams; it gives arming tones and a lost-drone alarm. Strongly recommended for a large aircraft.");
+  if (!has(P("antenna"))) add("info", "Extras", "Antennas row is empty", "Most receivers and GPS modules ship with antennas; confirm for the ones you pick.");
+  if (!has(P("wiring"))) add("info", "Extras", "Wiring & connectors row is empty", "See the wiring table and the tools list below for what to buy.");
   for (const r of ["fpv", "percam", "vtx", "companion"])
     if (P(r).status === "deferred") add("info", "Phase 2", `${P(r).label} is skipped until the drone flies safely`, "Good sequencing. The model below shows how much flight time the phase 2 hardware costs.");
 
@@ -522,12 +590,19 @@ function analyse(d) {
     { from: "ESC 1–4", to: "Motor 1–4", kind: "pwr", spec: s.esc.bullet ? `${s.esc.bullet} mm bullets` : "3 phase wires", note: "Swap any two phase wires to reverse a motor's spin direction." },
     { from: "Power board", to: "Flight controller", kind: "pwr", spec: "VBAT + GND", note: s.esc.noBec ? "ESCs have no BEC, so the FC must be fed here. Confirm its input range covers 6S." : "", verify: true },
     { from: "Flight controller", to: "ESC 1–4 (signal)", kind: "sig", spec: "Signal + GND per ESC", note: "Wire M1–M4 to the motor order in the ArduPilot quad-X diagram." },
-    { from: "Receiver", to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND", note: "ExpressLRS uses CRSF. In ArduPilot set that port's SERIALx_PROTOCOL to 23 (RCIN).", missing: P("rx").status !== "chosen" || rxK?.kind === "tx-module" },
-    { from: "GPS", to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND", note: "SERIALx_PROTOCOL = 5 (GPS).", missing: P("gps").status !== "chosen" },
-    { from: "Compass (in GPS)", to: "Flight controller I²C", kind: "i2c", spec: "SDA, SCL", note: "Only present if the GPS module has a compass.", missing: P("gps").status !== "chosen" },
-    { from: "Buzzer", to: "Flight controller", kind: "sig", spec: "BZ+ / BZ−", note: "", missing: P("buzzer").status !== "chosen" },
-    { from: "Telemetry radio", to: "Flight controller UART", kind: "data", spec: "MAVLink2", note: "SERIALx_PROTOCOL = 2. Or use ExpressLRS MAVLink telemetry and skip this radio.", missing: !tK || tK.kind !== "telem" },
+    { from: `Receiver${has(P("rx")) && rxK?.short ? ` (${rxK.short})` : ""}`, to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND",
+      note: mavlink ? "Set the receiver's output to MAVLink, and that port's SERIALx_PROTOCOL to 2 (MAVLink2). Baud rate per the ExpressLRS MAVLink guide." : "ExpressLRS uses CRSF. In ArduPilot set that port's SERIALx_PROTOCOL to 23 (RCIN).",
+      missing: !has(P("rx")) || rxK?.kind === "tx-module", verify: mavlink },
+    { from: "GPS", to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND", note: "SERIALx_PROTOCOL = 5 (GPS).", missing: !has(P("gps")) },
+    { from: "Compass (in GPS)", to: "Flight controller I²C", kind: "i2c", spec: "SDA, SCL", note: "Only present if the GPS module has a compass.", missing: !has(P("gps")) },
+    { from: "Buzzer", to: "Flight controller", kind: "sig", spec: "BZ+ / BZ−", note: "", missing: !has(P("buzzer")) },
+    ...(mavlink ? [] : [{ from: "Telemetry radio", to: "Flight controller UART", kind: "data", spec: "MAVLink2", note: "SERIALx_PROTOCOL = 2. Or use ExpressLRS MAVLink telemetry and skip this radio.", missing: !has(P("telem")) }]),
   ];
+  const ground = txP ? [
+    { from: radioK?.short || "Radio", to: `${txK?.short || "TX module"} (module bay)`, kind: "sig", spec: "JR bay, 5-pin", note: "Slide the module into the bay; the radio sends CRSF through the bay pins. Turn off the radio's internal RF in EdgeTX.", ground: true, verify: true },
+    ...(txK?.id === "nomad" ? [{ from: "2S–4S LiPo", to: "Nomad", kind: "pwr", spec: "XT30", note: "Needed for output above 250 mW. Not in your cart yet.", ground: true, missing: true }] : []),
+    ...(mavlink ? [{ from: `${txK?.short || "TX"} WiFi Backpack`, to: "Laptop", kind: "data", spec: "WiFi, no wire", note: "Connect Mission Planner or QGroundControl to the Backpack's WiFi for MAVLink.", ground: true }] : []),
+  ] : [];
   const phase2 = [
     { from: "Companion computer", to: "Flight controller TELEM", kind: "data", spec: "USB-to-UART adapter", note: masterPick(d, "companion")?.compat || "", ghost: true },
     { from: "Perception camera", to: "Companion computer", kind: "data", spec: "CSI ribbon", note: "", ghost: true },
@@ -541,19 +616,60 @@ function analyse(d) {
     const rows = (d.master?.items || []).filter((i) => (i.system || "").toLowerCase().startsWith(sys.toLowerCase().split(" ")[0]));
     const primary = rows.find((r) => /primary|planned/i.test(r.pick || "")) || rows[0];
     const p = P(role);
-    let cartText = p.status === "chosen" ? p.name : p.status === "deferred" ? "Skipped for now" : "Not chosen";
+    let cartText = has(p) ? p.name : p.status === "deferred" ? "Skipped for now" : "Not chosen";
     if (role === "motor" && s.motor.model) cartText = `${s.motor.model} ${s.motor.kv ?? ""}KV`;
-    if (role === "esc" && p.status !== "chosen" && s.esc.found) cartText = `${s.esc.cont} A ESC (from motor listing)`;
+    if (role === "esc" && !has(p) && s.esc.found) cartText = `${s.esc.cont} A ESC (from motor listing)`;
     if (role === "prop") cartText = `${prop}${p.status === "chosen" ? " (AliExpress)" : ""}`;
     if (role === "battery" && s.battery.mah) cartText = `${s.battery.cells}S ${s.battery.mah} mAh ${s.battery.chem || ""} ${s.battery.conn || ""}`;
     const tokens = (t) => (t || "").toLowerCase().match(/[a-z0-9.]{3,}/g)?.filter((w) => !/holybro|gemfan|caddx|happymodel|arducam|nvidia|molicel|samsung|brotherhobby|iflight|jhemcu|blade|dual|elrs|expresslrs|analog|pair|full|cased/.test(w)) || [];
     const same = (r) => r && tokens(r.component).some((w) => (p.text + " " + p.specs).toLowerCase().includes(w));
     const backup = rows.find((r) => r !== primary && same(r));
-    const state = p.status === "deferred" ? "deferred" : p.status !== "chosen" && !(role === "esc" && s.esc.found) && role !== "prop" ? "missing" : same(primary) ? "same" : backup ? "backup" : "changed";
-    return { sys, plan: primary?.component || "–", planW: primary?.weight_g, planPrice: primary?.line_total, cart: cartText, state, url: p.url };
+    const state = p.status === "deferred" ? "deferred" : !has(p) && !(role === "esc" && s.esc.found) && role !== "prop" ? "missing" : same(primary) ? "same" : backup ? "backup" : "changed";
+    return { sys, plan: primary?.component || "–", planW: primary?.weight_g, planPrice: primary?.line_total, cart: cartText, state, url: p.url, decided: p.status === "decided" };
   });
 
-  return { parts, s, mission, model, findings, wires, phase2, plan, rxK, tK };
+  /* --- part-to-part compatibility --- */
+  const nm = {
+    batt: s.battery.mah ? `${s.battery.cells}S ${s.battery.mah} mAh ${s.battery.chem || ""}`.trim() : "Battery",
+    motor: s.motor.model ? `${s.motor.model} ${s.motor.kv ?? ""}KV ×4` : "Motors", esc: s.esc.cont ? `${s.esc.cont} A ESC ×4` : "ESCs",
+    prop: prop || "Props", fc: shortName(P("fc"), "Flight controller"), rx: shortName(P("rx"), "Receiver"), tx: shortName(txP, "TX module"),
+    radio: shortName(radioP, "Radio"), gps: shortName(P("gps"), "GPS"), pdb: "Power board", frame: "Self-designed frame", buz: "Buzzer",
+  };
+  const pairs = [];
+  const pair = (a, b, via, sev, why, verify) => pairs.push({ a, b, via, sev, why, verify });
+  const cellsOk = (lo, hi) => (s.battery.cells && hi ? s.battery.cells >= (lo ?? 1) && s.battery.cells <= hi : null);
+  const mOk = cellsOk(s.motor.cellsMin, s.motor.cellsMax), eOk = cellsOk(s.esc.cellsMin, s.esc.cellsMax);
+  pair(nm.batt, nm.motor, "Battery voltage", mOk == null ? "warn" : mOk ? "ok" : "bad", mOk == null ? "Could not read both voltage ratings." : `${s.battery.cells}S is ${mOk ? "inside" : "outside"} the motor's ${s.motor.cellsMin}–${s.motor.cellsMax}S range.`);
+  pair(nm.batt, nm.esc, "Battery voltage", eOk == null ? "warn" : eOk ? "ok" : "bad", eOk == null ? "Could not read both voltage ratings." : `${s.battery.cells}S is ${eOk ? "inside" : "outside"} the ESC's ${s.esc.cellsMin}–${s.esc.cellsMax}S input.`);
+  const cr = iMaxTotal && CONN_A[s.battery.conn] ? iMaxTotal / CONN_A[s.battery.conn] : null;
+  pair(nm.batt, nm.pdb, `${s.battery.conn || "?"} · ${gauge(iMaxTotal || 60)} AWG`, cr == null ? "warn" : cr <= 0.8 ? "ok" : cr <= 1 ? "warn" : "bad",
+    cr == null ? "Connector rating unknown." : `Full throttle ≈ ${fmt(iMaxTotal)} A vs ≈ ${CONN_A[s.battery.conn]} A connector rating.${cr > 0.8 ? " Fine in bursts; an XT90 gives margin." : ""}`);
+  pair(nm.pdb, nm.fc, "VBAT + 5 V", s.esc.noBec ? "warn" : "ok", s.esc.noBec ? "The ESCs have no BEC, so the board must supply 5 V for the receiver, GPS and buzzer. Confirm the flight controller accepts 6S on VBAT." : "", true);
+  const head = s.esc.cont && top ? s.esc.cont / top.i : null;
+  pair(nm.esc, nm.motor, `${s.esc.bullet || "3.5"} mm bullets`, head == null ? "warn" : head >= 1.3 ? "ok" : head >= 1.05 ? "warn" : "bad", head ? `${s.esc.cont} A rating vs ${fmt(top.i, 1)} A peak per motor (${fmt(head, 1)}× headroom).` : "ESC rating unknown.");
+  pair(nm.fc, nm.esc, "PWM signal ×4", s.esc.found && !s.esc.dshot ? "info" : "ok", s.esc.found && !s.esc.dshot ? `The ESC listing quotes PWM up to ${s.esc.hz ?? "?"} Hz and no DShot: use normal PWM or OneShot125 and calibrate the ESCs.` : "", true);
+  const pOk = cartIn && s.motor.propMax ? cartIn >= (s.motor.propMin ?? 0) && cartIn <= s.motor.propMax : null;
+  pair(nm.motor, nm.prop, "Prop adapter", pOk == null ? "warn" : pOk ? "ok" : "bad", pOk == null ? "Prop size unknown." : `${cartIn}" is ${pOk ? "inside" : "outside"} the motor's ${s.motor.propMin}–${s.motor.propMax}" range. Confirm the prop hub fits the motor's adapter.`, true);
+  if (wb) pair(nm.prop, nm.frame, "Arm length", has(P("frame")) ? "info" : "bad", `Needs ≥ ${wb} mm motor-to-motor diagonal for ${cartIn}" props.`);
+  pair(nm.radio, nm.tx, "JR module bay", !txP || !radioP ? "bad" : txK?.id === "nomad" && radioK?.id === "boxer" ? "ok" : "info",
+    txK?.id === "nomad" && radioK?.id === "boxer" ? "Nomad has a JR 5-pin socket (Nano adapter included); the Boxer's bay is standard JR." : "Check the module fits the radio's bay.", true);
+  if (txK?.id === "nomad") pair("2S–4S LiPo", nm.tx, "XT30", "warn", "Needed above 250 mW output. Not in the cart yet.", true);
+  const rxOk = has(P("rx")) && rxK?.kind !== "tx-module";
+  pair(nm.tx, nm.rx, "ExpressLRS radio link", !rxOk ? "bad" : nomadXr3 ? "ok" : "info", nomadXr3 ? "Both LR1121 on ExpressLRS 3.5.0+. The XR3 uses one band at a time (no Gemini)." : "Both must run the same ExpressLRS version and band.");
+  pair(nm.rx, nm.fc, mavlink ? "UART · MAVLink2" : "UART · CRSF", !rxOk ? "bad" : "ok", mavlink ? "Receiver output set to MAVLink; SERIALx_PROTOCOL = 2. 5 V from the power board." : "SERIALx_PROTOCOL = 23 (RCIN).", true);
+  if (mavlink) pair(nm.tx, "Laptop GCS", "WiFi Backpack", txK?.id === "nomad" ? "ok" : "info", txK?.id === "nomad" ? "The Nomad's ESP32-C3 Backpack bridges MAVLink to Mission Planner or QGroundControl (Backpack 1.5.0+)." : "Needs a TX module with a WiFi Backpack.");
+  const kakute = /kakute/i.test(P("fc").text || "");
+  const gpsKind = kbFor(P("gps").text);
+  pair(nm.gps, nm.fc, gpsKind?.conn ? `UART + I²C · ${gpsKind.conn}` : "UART + I²C", !has(P("gps")) ? "bad" : kakute && gpsKind?.conn === "JST-GH" ? "warn" : "ok",
+    !has(P("gps")) ? "No GPS chosen." : kakute && gpsKind?.conn === "JST-GH" ? "Works with ArduPilot (SERIALx_PROTOCOL = 5), but Holybro GPS cables are JST-GH and the Kakute uses JST-SH, so plan on an adapter cable."
+      : gpsKind?.id === "sequre-m10" ? "u-blox M10 GPS with a QMC5883 compass, 3.3–5 V, SH1.0 6-pin. SERIALx_PROTOCOL = 5; check the pin order against the Kakute pinout." : "SERIALx_PROTOCOL = 5.", true);
+  pair(nm.buz, nm.fc, "Buzzer pads", has(P("buzzer")) ? "ok" : "info", has(P("buzzer")) ? "" : "Not chosen yet. Recommended for arming tones and a lost-drone alarm.");
+  if (jet) pair(jet.component.replace(/^NVIDIA\s+/i, "").replace(/\s*Dev Kit/i, ""), nm.fc, "USB-to-UART · MAVLink", "off", jet.compat || "");
+  if (jet && cam) pair(cam.component.replace(/\s*CSI.*$/i, ""), jet.component.replace(/^NVIDIA\s+/i, "").replace(/\s*Dev Kit/i, ""), "CSI ribbon", "off", cam.compat || "");
+  if (minutes && mission.minutes) pair(nm.batt, "Mission goal", "Flight time", minutes >= mission.minutes ? "ok" : minutes >= mission.minutes * 0.8 ? "warn" : "bad", `Model says about ${fmt(minutes)} min hover vs your ${mission.minutes} min goal.`);
+
+  const applied = Object.values(parts).filter((p) => p?.status === "decided");
+  return { parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
 }
 
 /* ---------- render ---------- */
@@ -563,8 +679,8 @@ const pill = (sev, label) => `<span class="pill ${sev}">${esc(label ?? SEV_LABEL
 
 function renderHeader(d) {
   $("file-name").textContent = d.source?.file || "Excel build sheet";
-  $("build-title").textContent = (d.master?.title || "Drone build").replace(/\s+—\s+.*$/, "").replace(/^\d+-INCH\s+/i, (m) => m);
-  $("mission").textContent = d.master?.mission || "";
+  $("build-title").textContent = (d.master?.title || "Autonomous quad build").replace(/\s+—\s+.*$/, "").replace(/^\d+-INCH\s+/i, (m) => m);
+  $("mission").textContent = d.master?.mission || `Mission (from your earlier Master Build Sheet tab, now removed): ${FALLBACK.mission}`;
   const when = (iso) => { const t = new Date(iso); return isNaN(t) ? "–" : t.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
   $("synced").textContent = when(d.source?.synced_at);
   $("modified").textContent = when(d.source?.modified);
@@ -580,9 +696,9 @@ function renderGauges(A) {
   if (m.jet) g.push({ sev: m.minutes2 >= (goal.minutes || 0) ? "ok" : m.minutes2 >= (goal.minutes || 0) * 0.8 ? "warn" : "bad", label: "With phase 2 autonomy kit", val: fmt(m.minutes2, 0), unit: "min",
     vs: `Adds ${fmt(m.addG)} g and ${m.jetW} W (${m.jet.component.replace(/NVIDIA\s+/i, "").split(" Dev")[0]}${m.cam ? " + camera" : ""})` });
   g.push({ sev: m.tw == null ? "warn" : m.tw >= 2 ? "ok" : m.tw >= 1.6 ? "warn" : "bad", label: "Thrust-to-weight", val: fmt(m.tw, 1), unit: ": 1", vs: "2 : 1 or more recommended" });
-  g.push({ sev: goal.auwKg ? (m.auw / 1000 <= goal.auwKg ? "ok" : "warn") : "info", label: "All-up weight (est.)", val: fmt(m.auw / 1000, 2), unit: "kg", vs: goal.auwKg ? `Master plan limit ${goal.auwKg} kg (7-inch plan)` : "" });
+  g.push({ sev: goal.auwKg ? (m.auw / 1000 <= goal.auwKg ? "ok" : "warn") : "info", label: "All-up weight (est.)", val: fmt(m.auw / 1000, 2), unit: "kg", vs: goal.auwKg ? `Master plan limit ${goal.auwKg} kg (7-inch plan)` : "Estimate; weigh the real build to confirm" });
   const first = ["motor", "esc", "prop", "fc", "battery", "frame", "rx", "pdb", "gps"];
-  const ready = first.filter((r) => A.parts[r]?.status === "chosen" && !(r === "rx" && A.rxK?.kind === "tx-module") || (r === "esc" && A.s.esc.found));
+  const ready = first.filter((r) => has(A.parts[r]) && !(r === "rx" && A.rxK?.kind === "tx-module") || (r === "esc" && A.s.esc.found));
   g.push({ sev: ready.length === first.length ? "ok" : ready.length >= first.length - 2 ? "warn" : "bad", label: "Parts for autonomous flight", val: `${ready.length}`, unit: `/ ${first.length}`,
     vs: "Missing: " + (first.filter((r) => !ready.includes(r)).map((r) => ({ gps: "GPS", rx: "receiver", esc: "ESC", fc: "flight controller", pdb: "power board" }[r] || r)).join(", ") || "none") });
   $("gauges").innerHTML = g.map((x) => `<div class="gauge" data-sev="${x.sev}"><span class="eyebrow">${esc(x.label)}</span><div class="val">${esc(x.val)} <small>${esc(x.unit)}</small></div><div>${pill(x.sev)}</div><span class="vs">${esc(x.vs)}</span></div>`).join("");
@@ -600,66 +716,165 @@ function renderFindings(A) {
     <div style="min-width:0"><div class="t">${esc(f.t)}${f.verify ? '<span class="verify">verify</span>' : ""}</div>${f.d ? `<p class="d">${esc(f.d)}</p>` : ""}</div></li>`).join("");
 }
 
+// Shared drawing helpers for the wiring and signal diagrams.
+const BOX_STYLE = {
+  ok: { stroke: "var(--ink)", fill: "var(--panel)", dash: "" },
+  decided: { stroke: "var(--accent)", fill: "var(--panel)", dash: "" },
+  missing: { stroke: "var(--bad)", fill: "var(--bad-bg)", dash: "5 4" },
+  deferred: { stroke: "var(--muted)", fill: "var(--panel)", dash: "5 4" },
+};
+function drawBox(n) {
+  const st = BOX_STYLE[n.st] || BOX_STYLE.deferred;
+  const clip = (t, px) => { t = String(t ?? ""); const max = Math.floor((n.w - 18) / px); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
+  return `<g opacity="${n.st === "deferred" ? 0.5 : 1}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="6" fill="${st.fill}" stroke="${st.stroke}" stroke-width="${n.st === "decided" ? 2.2 : 1.5}" ${st.dash ? `stroke-dasharray="${st.dash}"` : ""}/>
+    <text x="${n.x + 10}" y="${n.y + 21}" font-size="12.5" font-weight="600" fill="var(--ink)">${esc(clip(n.t, 7.6))}</text>
+    ${n.s ? `<text x="${n.x + 10}" y="${n.y + 38}" font-size="10.5" fill="${n.st === "missing" ? "var(--bad)" : "var(--muted)"}">${esc(clip(n.s, 6.4))}</text>` : ""}
+    ${n.s2 ? `<text x="${n.x + 10}" y="${n.y + 53}" font-size="10.5" fill="var(--muted)">${esc(clip(n.s2, 6.4))}</text>` : ""}</g>`;
+}
+const partState = (p, extraBad) => (extraBad || !p ? "missing" : p.status === "decided" ? "decided" : p.status === "chosen" ? "ok" : p.status);
+const shortName = (p, fb) => (p && has(p) ? (kbFor(p.text)?.short || p.name || fb) : fb).replace(/\s*\(.*\)$/, "");
+const wire = (d, color, w = 2, dash = "", marker = "") =>
+  `<path d="${d}" fill="none" stroke="var(--${color})" stroke-width="${w}" stroke-linejoin="round" ${dash ? `stroke-dasharray="${dash}"` : ""} ${marker ? `marker-end="url(#m-${marker})"` : ""}/>`;
+const label = (x, y, t, anchor = "start", color = "muted") => `<text x="${x}" y="${y}" font-size="10.5" text-anchor="${anchor}" fill="var(--${color})">${esc(t)}</text>`;
+
 function renderSchematic(A) {
-  const P = (r) => A.parts[r] || { status: "missing" };
-  const st = (r, extraBad) => extraBad ? "missing" : P(r).status === "chosen" ? "ok" : P(r).status;
-  const escSt = A.s.esc.found || P("esc").status === "chosen" ? "ok" : "missing";
+  const P = (r) => A.parts[r];
+  const rxBad = A.rxK?.kind === "tx-module";
   const N = {
-    batt: { x: 20, y: 200, w: 150, h: 64, t: "Battery", s: A.s.battery.mah ? `${A.s.battery.cells}S ${A.s.battery.mah} mAh` : "–", st: st("battery") },
-    pdb: { x: 230, y: 200, w: 150, h: 64, t: "Power board", s: "PDB / 5 V BEC", st: st("pdb") },
-    fc: { x: 450, y: 186, w: 170, h: 92, t: "Flight controller", s: (A.parts.fc?.name || "–").replace(/\s*\(.*\)$/, "").replace(/^Holybro\s+/i, ""), st: st("fc") },
-    rx: { x: 450, y: 30, w: 170, h: 60, t: "Receiver", s: A.rxK?.kind === "tx-module" ? "Need an ELRS RX" : (A.parts.rx?.name || "–"), st: st("rx", A.rxK?.kind === "tx-module") },
-    gps: { x: 650, y: 30, w: 170, h: 60, t: "GPS + compass", s: P("gps").status === "chosen" ? A.parts.gps.name : "Not chosen", st: st("gps") },
-    buz: { x: 240, y: 30, w: 150, h: 60, t: "Buzzer", s: P("buzzer").status === "chosen" ? "" : "Not chosen", st: st("buzzer") },
-    jet: { x: 450, y: 400, w: 170, h: 60, t: "Companion", s: "Phase 2", st: "deferred" },
-    cam: { x: 240, y: 400, w: 150, h: 60, t: "Perception cam", s: "Phase 2", st: "deferred" },
-    vtx: { x: 20, y: 400, w: 150, h: 60, t: "FPV cam + VTX", s: "Phase 2", st: "deferred" },
+    batt: { x: 20, y: 210, w: 150, h: 60, t: "Flight battery", s: A.s.battery.mah ? `${A.s.battery.cells}S ${A.s.battery.mah} mAh` : "–", st: partState(P("battery")) },
+    pdb: { x: 230, y: 210, w: 150, h: 60, t: "Power board", s: "PDB + 5 V BEC", st: partState(P("pdb")) },
+    fc: { x: 450, y: 196, w: 170, h: 92, t: "Flight controller", s: shortName(P("fc"), "Not chosen"), s2: "ArduPilot", st: partState(P("fc")) },
+    rx: { x: 450, y: 40, w: 170, h: 60, t: "Receiver", s: rxBad ? "Need an ELRS RX" : shortName(P("rx"), "Not chosen"), s2: A.mavlink ? "ELRS · MAVLink mode" : "", st: partState(P("rx"), rxBad) },
+    gps: { x: 650, y: 40, w: 170, h: 60, t: "GPS + compass", s: shortName(P("gps"), "Not chosen"), st: partState(P("gps")) },
+    buz: { x: 240, y: 40, w: 150, h: 60, t: "Buzzer", s: has(P("buzzer")) ? "" : "Not chosen", st: partState(P("buzzer")) },
+    jet: { x: 450, y: 400, w: 170, h: 56, t: "Companion", s: "Phase 2", st: "deferred" },
+    cam: { x: 240, y: 400, w: 150, h: 56, t: "Perception cam", s: "Phase 2", st: "deferred" },
+    vtx: { x: 20, y: 400, w: 150, h: 56, t: "FPV cam + VTX", s: "Phase 2", st: "deferred" },
+    radio: { x: 20, y: 520, w: 170, h: 60, t: "Radio", s: shortName(A.parts.radio, "Handheld radio"), s2: "Sticks + switches", st: partState(A.parts.radio) },
+    tx: { x: 250, y: 520, w: 170, h: 60, t: "TX module", s: shortName(A.parts.tx, "Not chosen"), s2: "In the radio's bay", st: partState(A.parts.tx) },
+    txbat: { x: 480, y: 520, w: 180, h: 60, t: "2S–4S LiPo", s: "Not in cart yet", s2: "Powers the TX >250 mW", st: A.txK?.id === "nomad" ? "missing" : "deferred" },
+    gcs: { x: 710, y: 520, w: 170, h: 60, t: "Laptop", s: "Mission Planner / QGC", st: "ok" },
   };
+  const escSt = A.s.esc.found ? "ok" : partState(P("esc"));
   for (let i = 0; i < 4; i++) {
-    N["esc" + i] = { x: 740, y: 140 + i * 66, w: 90, h: 50, t: `ESC ${i + 1}`, s: A.s.esc.cont ? `${A.s.esc.cont} A` : "", st: escSt };
-    N["mot" + i] = { x: 860, y: 140 + i * 66, w: 100, h: 50, t: `Motor ${i + 1}`, s: A.s.motor.kv ? `${A.s.motor.kv} KV` : "", st: st("motor") };
+    N["esc" + i] = { x: 740, y: 150 + i * 66, w: 90, h: 50, t: `ESC ${i + 1}`, s: A.s.esc.cont ? `${A.s.esc.cont} A` : "", st: escSt };
+    N["mot" + i] = { x: 860, y: 150 + i * 66, w: 100, h: 50, t: `Motor ${i + 1}`, s: A.s.motor.kv ? `${A.s.motor.kv} KV` : "", st: partState(P("motor")) };
   }
-  const R = (n, side) => side === "r" ? [n.x + n.w, n.y + n.h / 2] : side === "l" ? [n.x, n.y + n.h / 2] : side === "t" ? [n.x + n.w / 2, n.y] : [n.x + n.w / 2, n.y + n.h];
-  const line = (a, b, cls, dash, off = 0) => {
-    const [x1, y1] = a, [x2, y2] = b; const mx = (x1 + x2) / 2 + off;
-    const dpath = Math.abs(y1 - y2) < 1 ? `M${x1} ${y1}H${x2}` : Math.abs(x1 - x2) < 1 ? `M${x1} ${y1}V${y2}` : `M${x1} ${y1}H${mx}V${y2}H${x2}`;
-    return `<path d="${dpath}" fill="none" stroke="var(--${cls})" stroke-width="${cls === "pwr" ? 3.5 : 2}" ${dash ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
-  };
+  const dash = (n) => (n.st === "missing" || n.st === "deferred" ? "6 5" : "");
   let e = "";
-  e += line(R(N.batt, "r"), R(N.pdb, "l"), "pwr");
-  e += `<path d="M${N.pdb.x + 75} ${N.pdb.y + 64}V340H710V${N.esc0.y + 18}" fill="none" stroke="var(--pwr)" stroke-width="3.5" stroke-linejoin="round"/>`;
+  // power
+  e += wire(`M170 240H230`, "pwr", 3.5);
+  e += wire(`M305 270V350H710V${N.esc0.y + 18}`, "pwr", 3.5);
+  e += wire(`M380 232H450`, "pwr", 3.5);
   for (let i = 0; i < 4; i++) {
     const y = N["esc" + i].y + 18;
-    e += `<path d="M710 ${y}H740" fill="none" stroke="var(--pwr)" stroke-width="3.5"/>`;
-    e += line([N["esc" + i].x + 90, y + 6], [N["mot" + i].x, y + 6], "pwr");
-    e += `<path d="M620 ${200 + i * 18}H${645 + i * 12}V${N["esc" + i].y + 38}H740" fill="none" stroke="var(--sig)" stroke-width="2" stroke-linejoin="round"/>`;
+    e += wire(`M710 ${y}H740`, "pwr", 3.5);
+    e += wire(`M830 ${y + 6}H860`, "pwr", 3.5);
+    e += wire(`M620 ${210 + i * 18}H${645 + i * 12}V${N["esc" + i].y + 38}H740`, "sig");
   }
-  e += `<path d="M${N.pdb.x + 150} 222H450" fill="none" stroke="var(--pwr)" stroke-width="3.5"/>`;
-  e += line(R(N.rx, "b"), [N.rx.x + 85, N.fc.y], "data", N.rx.st !== "ok");
-  e += `<path d="M${N.gps.x + 30} 90V150H590V186" fill="none" stroke="var(--data)" stroke-width="2" ${N.gps.st !== "ok" ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
-  e += `<path d="M${N.gps.x + 55} 90V162H605V186" fill="none" stroke="var(--i2c)" stroke-width="2" stroke-dasharray="${N.gps.st !== "ok" ? "6 5" : "3 3"}" stroke-linejoin="round"/>`;
-  e += `<path d="M${N.buz.x + 75} 90V150H480V186" fill="none" stroke="var(--sig)" stroke-width="2" ${N.buz.st !== "ok" ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
-  e += `<g opacity=".45">` + line(R(N.jet, "t"), R(N.fc, "b"), "data", true) + line(R(N.cam, "r"), R(N.jet, "l"), "data", true) + `</g>`;
-  const box = (n) => {
-    const stroke = n.st === "ok" ? "var(--ink)" : n.st === "missing" ? "var(--bad)" : "var(--muted)";
-    const fill = n.st === "missing" ? "var(--bad-bg)" : "var(--panel)";
-    return `<g opacity="${n.st === "deferred" ? 0.5 : 1}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="${n.st === "ok" ? 1.5 : 1.5}" ${n.st !== "ok" ? 'stroke-dasharray="5 4"' : ""}/>
-      <text x="${n.x + 10}" y="${n.y + 22}" font-size="13" font-weight="600" fill="var(--ink)">${esc(n.t)}</text>
-      <text x="${n.x + 10}" y="${n.y + 40}" font-size="11" fill="${n.st === "missing" ? "var(--bad)" : "var(--muted)"}">${esc(String(n.s).slice(0, n.w > 160 ? 24 : 18))}</text></g>`;
-  };
-  const labels = `<text x="180" y="194" font-size="10.5" fill="var(--muted)">${esc(A.s.battery.conn || "XT60")} · ${gauge(A.model.iMaxTotal || 60)} AWG</text>
-    <text x="390" y="214" font-size="10.5" fill="var(--muted)">VBAT</text>
-    <text x="560" y="356" font-size="10.5" fill="var(--muted)">${gauge(A.model.top?.i || 15)} AWG</text>
-    <text x="860" y="132" font-size="10.5" fill="var(--muted)">3-phase</text>
-    <text x="${N.rx.x + 92}" y="140" font-size="10.5" fill="var(--muted)">CRSF</text>`;
-  $("schematic").innerHTML = `<svg viewBox="0 0 980 480" width="980" height="480" role="img" aria-label="Wiring diagram from battery through power board and ESCs to motors, with flight controller, receiver, GPS and buzzer">${e}${Object.values(N).map(box).join("")}${labels}</svg>`;
+  // serial and sensors
+  e += wire(`M535 100V196`, "data", 2, dash(N.rx));
+  e += wire(`M${N.gps.x + 30} 100V160H590V196`, "data", 2, dash(N.gps));
+  e += wire(`M${N.gps.x + 55} 100V172H605V196`, "i2c", 2, N.gps.st === "missing" ? "6 5" : "3 3");
+  e += wire(`M315 100V160H480V196`, "sig", 2, dash(N.buz));
+  e += `<g opacity=".45">${wire("M535 400V288", "data", 2, "6 5")}${wire("M390 428H450", "data", 2, "6 5")}</g>`;
+  // ground station
+  e += `<line x1="0" x2="980" y1="488" y2="488" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="2 5"/>`;
+  e += wire("M190 550H250", "sig", 2, dash(N.tx));
+  e += wire("M480 550H420", "pwr", 3, dash(N.txbat));
+  e += wire("M335 580V605H795V580", "data", 2, "2 4");
+  const labels = [
+    `<text x="20" y="22" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">AIRCRAFT</text>`,
+    `<text x="20" y="508" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">GROUND STATION</text>`,
+    label(176, 232, A.s.battery.conn || "XT60"),
+    label(176, 258, `${gauge(A.model.iMaxTotal || 60)} AWG`),
+    label(386, 224, "VBAT"),
+    label(380, 366, `${gauge(A.model.top?.i || 15)} AWG to each ESC`),
+    label(860, 142, "3-phase"),
+    label(542, 150, A.mavlink ? "MAVLink2" : "CRSF"),
+    label(542, 164, "UART"),
+    label(194, 543, "JR bay"),
+    label(424, 543, "XT30"),
+    label(565, 620, "WiFi (no wire)", "middle"),
+  ].join("");
+  $("schematic").innerHTML = `<svg viewBox="0 0 980 630" width="980" height="630" role="img" aria-label="Wiring diagram: battery, power board, ESCs and motors; flight controller with receiver, GPS and buzzer; ground station radio, transmitter module, its battery and laptop">${e}${Object.values(N).map(drawBox).join("")}${labels}</svg>`;
 
-  const rows = [...A.wires, ...A.phase2];
+  const rows = [...A.wires, ...A.ground, ...A.phase2];
   $("wire-table").innerHTML = `<thead><tr><th>From</th><th>To</th><th>Line</th><th>Wire / connector</th><th>Notes</th></tr></thead><tbody>${rows.map((w) => {
     const kind = { pwr: "Power", sig: "Signal", data: "Serial", i2c: "I²C" }[w.kind];
-    const state = w.ghost ? pill("off", "Phase 2") : w.missing ? pill("bad", "Part missing") : "";
+    const state = w.ghost ? pill("off", "Phase 2") : w.missing ? pill("bad", "Part missing") : w.ground ? pill("info", "Ground") : "";
     return `<tr class="${w.ghost ? "ghost" : ""}"><td>${esc(w.from)}</td><td>${esc(w.to)}</td><td><span style="color:var(--${w.kind})">■</span> ${kind}</td><td class="mono small">${esc(w.spec)}</td><td class="small">${state} ${esc(w.note)}${w.verify ? '<span class="verify">verify</span>' : ""}</td></tr>`;
   }).join("")}</tbody>`;
+}
+
+const FLOW = { cmd: "s2", tel: "s1", msn: "i2c", sen: "s3", out: "sig", pwr: "pwr", ghost: "muted" };
+function renderSignals(A) {
+  const P = (r) => A.parts[r];
+  const proto = A.mavlink ? "MAVLink2" : "CRSF";
+  const tx = shortName(A.parts.tx, "TX module"), rx = shortName(P("rx"), "Receiver"), fc = shortName(P("fc"), "Flight controller");
+  const N = {
+    hands: { x: 20, y: 30, w: 200, h: 62, t: "You: sticks + switches", s: shortName(A.parts.radio, "Handheld radio"), s2: "EdgeTX mixes channels", st: partState(A.parts.radio) },
+    tx: { x: 20, y: 170, w: 200, h: 62, t: tx, s: "ELRS transmitter", s2: A.txK?.id === "nomad" ? "ESP32 + WiFi Backpack" : "", st: partState(A.parts.tx) },
+    gcs: { x: 20, y: 330, w: 200, h: 62, t: "Laptop GCS", s: "Mission Planner / QGC", s2: "Plans missions", st: "ok" },
+    rx: { x: 430, y: 170, w: 170, h: 62, t: rx, s: "ELRS receiver", s2: `${proto} to the FC`, st: partState(P("rx"), A.rxK?.kind === "tx-module") },
+    fc: { x: 650, y: 150, w: 170, h: 100, t: fc, s: "ArduPilot", s2: "IMU + baro on board", st: partState(P("fc")) },
+    gps: { x: 650, y: 20, w: 170, h: 58, t: shortName(P("gps"), "GPS"), s: "Position + heading", st: partState(P("gps")) },
+    buz: { x: 860, y: 20, w: 110, h: 58, t: "Buzzer", s: "Alarms", st: partState(P("buzzer")) },
+    escs: { x: 860, y: 150, w: 110, h: 58, t: "ESC ×4", s: "Motor speed", st: A.s.esc.found ? "ok" : partState(P("esc")) },
+    mots: { x: 860, y: 280, w: 110, h: 58, t: "Motors ×4", s: "Thrust", st: partState(P("motor")) },
+    batt: { x: 430, y: 300, w: 170, h: 58, t: "Battery", s: "Voltage sensing", st: partState(P("battery")) },
+    jet: { x: 650, y: 330, w: 170, h: 58, t: "Companion", s: "Phase 2 autonomy", st: "deferred" },
+    cam: { x: 430, y: 410, w: 170, h: 50, t: "Perception cam", s: "Phase 2", st: "deferred" },
+  };
+  const markers = Object.entries(FLOW).map(([k, c]) =>
+    `<marker id="m-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--${c})"/></marker>`).join("");
+  const f = (d, k, dashed) => wire(d, FLOW[k], k === "pwr" ? 3 : 2.2, dashed ? "6 5" : "", k);
+  let e = `<rect x="232" y="150" width="186" height="100" rx="8" fill="var(--sunk)" stroke="var(--line)" stroke-dasharray="3 4"/>`;
+  e += label(325, 168, "ExpressLRS radio link", "middle", "ink");
+  e += label(325, 240, A.txK?.id === "nomad" && A.rxK?.id === "xr3" ? "900 MHz or 2.4 GHz" : "2.4 GHz / 900 MHz", "middle");
+  e += f("M120 92V168", "cmd") + label(128, 128, `Stick commands (CRSF, JR bay)`);
+  e += f("M220 192H428", "cmd") + label(236, 186, "Commands + missions ▸");
+  e += f("M430 214H222", "tel") + label(236, 228, "◂ Telemetry");
+  e += f("M600 186H648", "cmd") + f("M650 214H602", "tel") + label(625, 166, proto, "middle");
+  e += f("M95 330V234", "msn") + f("M150 234V328", "tel") + label(88, 290, "Missions", "end") + label(158, 290, "WiFi (Backpack)") + label(158, 304, "MAVLink");
+  e += f("M735 78V148", "sen") + label(742, 112, "Position (UART)") + label(742, 126, "Heading (I²C)");
+  e += f("M820 179H858", "out") + label(824, 200, "PWM");
+  e += f("M820 160H840V49H858", "out");
+  e += f("M915 208V278", "pwr") + label(922, 248, "3-phase");
+  e += f("M600 329H625V235H648", "pwr") + label(604, 346, "VBAT");
+  e += `<g opacity=".5">${f("M725 252V328", "ghost", true)}${f("M745 330V254", "ghost", true)}${f("M600 435H735V390", "ghost", true)}${label(752, 300, "MAVLink (phase 2)")}</g>`;
+  $("signals").innerHTML = `<svg viewBox="0 0 980 470" width="980" height="470" role="img" aria-label="Signal flow: stick commands from the radio through the transmitter and receiver to the flight controller; telemetry back to the laptop; sensors in, motor commands out"><defs>${markers}</defs>${e}${Object.values(N).map(drawBox).join("")}</svg>`;
+  $("signal-legend").innerHTML = [["cmd", "Control commands"], ["tel", "Telemetry back to you"], ["msn", "Missions from the laptop"], ["sen", "Sensor data"], ["out", "Outputs to ESCs and buzzer"], ["pwr", "Power"]]
+    .map(([k, t]) => `<span><i style="border-color:var(--${FLOW[k]})"></i>${t}</span>`).join("");
+
+  const gpsOk = has(P("gps"));
+  const stories = [
+    ["Moving a stick", [
+      `${shortName(A.parts.radio, "The radio")} reads the stick and EdgeTX turns it into channel values.`,
+      `The radio passes them to the ${tx} through the module bay pins (CRSF).`,
+      `The ${tx} transmits them over ExpressLRS, many times a second.`,
+      `The ${rx} receives them and hands them to the ${fc} over a UART as ${proto}.`,
+      `ArduPilot mixes your command with the IMU${gpsOk ? " and GPS" : ""} and sets each ESC's speed. The ESCs drive the motors.`]],
+    ["Flying a mission", [
+      "Plan waypoints in Mission Planner or QGroundControl.",
+      A.mavlink ? `The laptop sends the mission over WiFi to the ${tx}'s Backpack.` : "The laptop needs a telemetry link to the aircraft first.",
+      `It travels over the same ExpressLRS link to the ${rx} and is stored by ArduPilot.`,
+      gpsOk ? "Flip the mode switch to Auto. ArduPilot flies the route using GPS." : "Auto mode needs a GPS, which is not chosen yet.",
+      "Telemetry (position, battery, mode) returns the same way to the laptop. Your sticks still override."]],
+    ["If the radio link drops", [
+      `The ${rx} stops receiving.`,
+      "ArduPilot notices the missing control input and triggers its radio failsafe (FS_THR_ENABLE).",
+      gpsOk ? "With GPS it returns home (RTL) and lands; otherwise it lands where it is." : "Without GPS it can only land where it is.",
+      "Test this on the bench with props off: switch the radio off and watch the mode change in Mission Planner."]],
+  ];
+  $("signal-stories").innerHTML = stories.map(([h, steps], i) => `<div style="display:grid;gap:8px;align-content:start;min-width:0"><h3>${esc(h)}${i === 2 ? '<span class="verify">verify</span>' : ""}</h3><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></div>`).join("");
+}
+
+function renderPairs(A) {
+  const counts = A.pairs.reduce((c, p) => ((c[p.sev] = (c[p.sev] || 0) + 1), c), {});
+  $("pairs-sum").textContent = `${A.pairs.length} connections · ${counts.ok || 0} OK · ${(counts.warn || 0) + (counts.info || 0)} to check · ${counts.bad || 0} blocking`;
+  $("pairs-table").innerHTML = `<thead><tr><th>Part</th><th>Connects to</th><th>Through</th><th>Status</th><th>Why</th></tr></thead><tbody>${A.pairs.map((p) =>
+    `<tr class="${p.sev === "off" ? "ghost" : ""}"><td>${esc(p.a)}</td><td>${esc(p.b)}</td><td class="mono small">${esc(p.via)}</td><td>${pill(p.sev, p.sev === "off" ? "Phase 2" : undefined)}</td><td class="small">${esc(p.why)}${p.verify ? '<span class="verify">verify</span>' : ""}</td></tr>`).join("")}</tbody>`;
 }
 
 const INPUT_DEFS = [
@@ -736,6 +951,7 @@ const TOOLS = (A) => {
     ["Laptop with Mission Planner or QGroundControl", "Setup, calibration and waypoint missions in ArduPilot"],
     ["ExpressLRS Configurator and a USB-C data cable", "To bind and update the radio link"],
     ["Spare props (CW and CCW)", ""],
+    ...(A.txK?.id === "nomad" ? [["Small 2S–4S LiPo with an XT30 plug", "Powers the Nomad above 250 mW"]] : []),
     ["Safety glasses and a fire extinguisher for the bench", big ? "16-inch props carry a lot of energy" : ""],
   ];
   return [["Build bench", build], ["Setup and flying", fly]];
@@ -749,9 +965,11 @@ function renderTools(A) {
 }
 
 function renderPlan(A) {
+  $("plan-h").closest("section").hidden = !DATA.master;
+  if (!DATA.master) return;
   const lab = { same: pill("ok", "Same as plan"), backup: pill("info", "Plan's backup"), changed: pill("warn", "Changed"), missing: pill("bad", "Not chosen"), deferred: pill("off", "Skipped") };
   $("plan-table").innerHTML = `<thead><tr><th>System</th><th>Master plan (primary)</th><th>Your cart</th><th>Status</th><th style="text-align:right">Plan $</th></tr></thead><tbody>${A.plan.map((r) =>
-    `<tr><td>${esc(r.sys)}</td><td>${esc(r.plan)}</td><td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.cart)}</a>` : esc(r.cart)}</td><td>${lab[r.state]}</td><td class="n">${r.planPrice != null ? "$" + fmt(r.planPrice, 2) : "–"}</td></tr>`).join("")}
+    `<tr><td>${esc(r.sys)}</td><td>${esc(r.plan)}</td><td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.cart)}</a>` : esc(r.cart)}</td><td>${lab[r.state]}${r.decided ? " " + pill("info", "Chosen in chat") : ""}</td><td class="n">${r.planPrice != null ? "$" + fmt(r.planPrice, 2) : "–"}</td></tr>`).join("")}
     <tr><td colspan="4" class="muted small">Master sheet subtotal (primary picks)</td><td class="n"><b>$${fmt(DATA.master?.subtotal, 2)}</b></td></tr></tbody>`;
 }
 
@@ -767,11 +985,17 @@ function renderNext(A) {
   $("next").innerHTML = [...items, ...extra].map((t) => `<li>${esc(t)}</li>`).join("");
 }
 
+function renderDecided(A) {
+  const el = $("decided-note");
+  el.hidden = !A.applied.length;
+  el.textContent = A.applied.length ? `Includes ${A.applied.length} part${A.applied.length > 1 ? "s" : ""} chosen in chat that ${A.applied.length > 1 ? "are" : "is"} not in your Excel yet: ${A.applied.map((p) => p.name.replace(/\s*\(.*\)$/, "")).join(", ")}. Add ${A.applied.length > 1 ? "them" : "it"} to the cart sheet and press Update to make ${A.applied.length > 1 ? "them" : "it"} official.` : "";
+}
+
 function renderAll() {
   if (!DATA) return;
   const A = analyse(DATA);
   window.__A = A;
-  renderHeader(DATA); renderGauges(A); renderFindings(A); renderSchematic(A); renderModel(A); renderPlan(A); renderTools(A); renderNext(A);
+  renderHeader(DATA); renderDecided(A); renderGauges(A); renderFindings(A); renderSchematic(A); renderSignals(A); renderPairs(A); renderModel(A); renderPlan(A); renderTools(A); renderNext(A);
 }
 
 /* ---------- events ---------- */
@@ -789,7 +1013,7 @@ function rerenderModelOnly() {
   clearTimeout(modelTimer);
   modelTimer = setTimeout(() => {
     const A = analyse(DATA); window.__A = A;
-    renderGauges(A); renderFindings(A); renderSchematic(A); renderNext(A); renderChart(A);
+    renderGauges(A); renderFindings(A); renderSchematic(A); renderPairs(A); renderNext(A); renderChart(A);
     const m = A.model;
     $("readout").innerHTML = [["All-up weight", `${fmt(m.auw)} g`], ["Hover thrust / motor", `${fmt(m.hoverPull)} g`], ["Hover current / motor", `${fmt(m.iHover, 1)} A`],
       ["Max current, all motors", `${fmt(m.iMaxTotal, 0)} A`], ["Hover throttle (thrust %)", `${fmt(m.hoverPct, 0)} %`], ["Est. hover time", `${fmt(m.minutes, 1)} min`]]
@@ -885,7 +1109,7 @@ $("update-btn").addEventListener("click", async () => {
     const A = window.__A, out = $("ask-out");
     ctrl?.abort(); ctrl = new AbortController();
     out.hidden = false; out.textContent = "Thinking…"; $("ask-btn").disabled = true;
-    const brief = { mission: DATA.master?.mission, cart: DATA.cart?.items?.map((i) => ({ component: i.component, choice: (i.link || "").split("?")[0], specs: (i.specs || "").slice(0, 1500) })),
+    const brief = { mission: DATA.master?.mission || FALLBACK.mission, chosen_in_chat_not_in_excel: A.applied.map((p) => p.name), cart: DATA.cart?.items?.map((i) => ({ component: i.component, choice: (i.link || "").split("?")[0], specs: (i.specs || "").slice(0, 1500) })),
       plan_primary: DATA.master?.items?.filter((i) => /primary|planned/i.test(i.pick || "")).map((i) => ({ system: i.system, component: i.component, weight_g: i.weight_g, compat: i.compat })),
       efficiency_choice: DATA.efficiency, model: { volts: A.model.v, prop: A.model.prop, auw_g: Math.round(A.model.auw), hover_min: +A.model.minutes?.toFixed(1), thrust_to_weight: +A.model.tw?.toFixed(2), max_current_A: Math.round(A.model.iMaxTotal), inputs: A.model.I },
       findings: A.findings.map((f) => `[${f.sev}] ${f.area}: ${f.t}`) };
