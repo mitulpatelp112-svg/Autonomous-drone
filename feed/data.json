@@ -2,9 +2,9 @@
  "source": {
   "file": "Drone_Master_Build_Sheet.xlsx",
   "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
-  "modified": "Fri, 23 Oct 2026 11:37:47 GMT",
-  "sha256": "2ea8f8341a7b25a3",
-  "synced_at": "2026-10-23T11:41:18+00:00",
+  "modified": "Fri, 23 Oct 2026 13:43:24 GMT",
+  "sha256": "fe872936c533c113",
+  "synced_at": "2026-10-23T14:07:22+00:00",
   "sheets": [
    "cart",
    "Motor",
@@ -48,7 +48,7 @@
     "component": "Flight Controller",
     "link": "FC",
     "qty": 1,
-    "cost": null
+    "cost": 103.85
    },
    {
     "component": "Compass",
@@ -90,19 +90,19 @@
     "component": "RC Receiver rX",
     "link": "RX",
     "qty": 1,
-    "cost": null
+    "cost": 25.52
    },
    {
     "component": "Radio",
     "link": "TX",
     "qty": 1,
-    "cost": null
+    "cost": 196.57
    },
    {
-    "component": "Telemetry  tx",
-    "link": "No need",
-    "qty": null,
-    "cost": null
+    "component": "Radio Battry",
+    "link": "Small Battry",
+    "qty": 1,
+    "cost": 38.28
    },
    {
     "component": "Companion Computer",
@@ -114,19 +114,25 @@
     "component": "Power Distribution / BEC",
     "link": "pow distrubtion board",
     "qty": 1,
-    "cost": null
-   },
-   {
-    "component": "Antennas",
-    "link": null,
-    "qty": null,
-    "cost": null
+    "cost": 20.74
    },
    {
     "component": "Wiring & Connectors",
     "link": null,
     "qty": null,
     "cost": null
+   },
+   {
+    "component": "Charger",
+    "link": null,
+    "qty": null,
+    "cost": null
+   },
+   {
+    "component": "Total",
+    "link": null,
+    "qty": null,
+    "cost": 545.27
    }
   ]
  },

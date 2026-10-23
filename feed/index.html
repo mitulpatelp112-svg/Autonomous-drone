@@ -247,11 +247,10 @@ const TRIGGER_ID = "trig_01LJERC8mmmHL2Tz3PwJDpgo";
 const DECISIONS = {
   date: "2026-10-21",
   parts: {
-    radio: { label: "Radio controller", name: "RadioMaster Boxer, ELRS version (radio)", specs: "EdgeTX handheld radio with built-in 2.4 GHz ExpressLRS (up to 1 W in the US per listings), a built-in WiFi Backpack and a standard JR module bay." },
+    radio: { owned: true, label: "Radio controller", name: "RadioMaster Boxer (radio)", specs: "EdgeTX handheld radio with built-in 2.4 GHz ExpressLRS (up to 1 W in the US per listings), a built-in WiFi Backpack and a standard JR module bay." },
     fc: { label: "Flight Controller", name: "Holybro Kakute H7 v1.5 (flight controller)", specs: "Replaces the out-of-stock v2. ICM-42688-P IMU, SPA06 barometer, 6 UARTs, 7–42 V input, onboard 5 V/2 A and 9 V/3 A BECs (Holybro listing)." },
-    buzzer: { label: "Buzzer", name: "Vifly Finder 2 (lost-model buzzer)", specs: "Self-powered buzzer: keeps beeping after the main battery disconnects. 4.5–8.5 V input, up to 105 dB, about $17–19." },
     rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
-    telem: { label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via the radio's WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
+    telem: { setting: true, label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via the radio's WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
     gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
   },
 };
@@ -296,6 +295,7 @@ const has = (p) => !!p && (p.status === "chosen" || p.status === "decided");
 
 /* ---------- reading the sheet ---------- */
 const ROLES = [
+  ["radiobatt", /radio\s*batt?e?ry/i], ["charger", /charger/i], ["total", /^\s*total\s*$/i],
   ["motor", /motor/i], ["esc", /\besc\b/i], ["prop", /propell|\bprop\b/i], ["buzzer", /buzzer/i],
   ["gps", /\bgps\b/i], ["fc", /flight controller|\bfc\b/i], ["compass", /compass/i], ["battery", /battery/i],
   ["frame", /frame/i], ["fpv", /fpv cam/i], ["percam", /perception/i], ["vtx", /vtx|video trans/i],
@@ -328,6 +328,12 @@ function cartParts(d) {
     const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : (/^(rx|tx|fc|esc|gps|props?|buzzer|motor|radio|tbd|todo|\?+|-+)$/i.test(text.trim()) || text.trim().toLowerCase() === String(it.component).trim().toLowerCase()) ? "placeholder" : /^(no need|not needed|none|n\/?a)$/i.test(text.trim()) ? "notneeded" : "chosen";
     const cost = parseFloat(it.cost), qty = parseFloat(it.qty);
     const bought = status === "placeholder" && cost > 0; // a bare name with a price is a part already bought
+    const pick = bought && DECISIONS.parts[role];
+    if (pick) {
+      parts[role] = { role, label: it.component.trim(), text: pick.name, specs: pick.specs, status: "chosen", name: pick.name, url: pick.url || null,
+        cost, qty: qty > 0 ? qty : null, bought: true, assumed: text.trim(), owned: !!pick.owned };
+      continue;
+    }
     parts[role] = { role, label: it.component.trim(), text, specs: it.specs || (role === "motor" ? FALLBACK.motorSpecs : ""), specsFallback: !it.specs && role === "motor",
       status: bought ? "chosen" : status, name: bought ? `${it.component.trim()} (bought, unnamed)` : status === "chosen" ? niceName(text) : "", url: linkOf(text),
       cost: cost > 0 ? cost : null, qty: qty > 0 ? qty : null, bought };
@@ -338,7 +344,7 @@ function cartParts(d) {
   if (kindOf(parts.telem) === "radio" && !parts.radio) { parts.radio = { ...parts.telem, role: "radio", movedFrom: parts.telem.label }; delete parts.telem; }
   for (const [role, dd] of Object.entries(DECISIONS.parts)) {
     if (parts[role]?.status === "chosen") continue;
-    parts[role] = { role, label: parts[role]?.label || dd.label, text: dd.name, specs: dd.specs, status: "decided", name: dd.name, url: dd.url || null, placeholder: parts[role]?.status === "placeholder" ? parts[role].text : null,
+    parts[role] = { role, label: parts[role]?.label || dd.label, text: dd.name, specs: dd.specs, status: "decided", owned: !!dd.owned, setting: !!dd.setting, name: dd.name, url: dd.url || null, placeholder: parts[role]?.status === "placeholder" ? parts[role].text : null,
       agrees: role === "telem" && parts[role]?.status === "notneeded" ? parts[role].text : null };
   }
   return parts;
@@ -596,7 +602,15 @@ function analyse(d) {
     add("info", "Extras", "Your buzzer is a plain one", "That covers ArduPilot's arming, GPS and low-battery tones. It goes silent if the battery is knocked out in a crash; a self-powered one such as the Vifly Finder 2 keeps beeping. Check it is a 5 V active buzzer for the Kakute's buzzer pads.", true);
   for (const p of Object.values(parts)) if (p?.agrees)
     add("ok", "Telemetry", `Your "${p.label.trim()}" row says "${p.agrees}", which matches this plan`, "Telemetry and Mission Planner ride on the ExpressLRS link (MAVLink mode), so there is no separate telemetry radio to buy.");
-  for (const p of Object.values(parts)) if (p?.status === "decided" && !p.agrees)
+  for (const p of Object.values(parts)) if (p?.assumed && !p.owned)
+    add("info", "Sheet", `Assumed your "${p.label}" ($${fmt(p.cost, 2)}) is the ${kbFor(p.text)?.short || p.name}`, `The row says "${p.assumed}" with a price, so the page uses the part picked in chat. Type the real model name in the sheet if you bought something else, then press Update.`, true);
+  if (P("charger").status === "missing")
+    add("warn", "Power", "Charger row is empty", `You need a ${s.battery.cells || 6}S balance charger for the flight battery, plus a LiPo-safe bag. Check your radio battery's charging too.`);
+  for (const p of Object.values(parts)) if (p?.owned)
+    add("ok", "Radio", `You already own the ${kbFor(p.text)?.short || p.name}`, `Nothing to buy for the radio. Check it is the ExpressLRS version (its ELRS menu appears under Tools), not the multi-protocol 4-in-1 version, since the built-in WiFi Backpack for Mission Planner comes with ELRS. ${p.placeholder ? `You can write "${kbFor(p.text)?.short || p.name}" in the "${p.label}" row instead of "${p.placeholder}".` : ""}`, true);
+  for (const p of Object.values(parts)) if (p?.status === "decided" && p.setting && p.role === "telem")
+    add("ok", "Telemetry", "Telemetry rides on the ExpressLRS link", "Mission Planner talks to the drone through the radio's WiFi Backpack and the receiver in MAVLink mode. It is a setting, not a part, so there is nothing to add to the sheet.");
+  for (const p of Object.values(parts)) if (p?.status === "decided" && !p.agrees && !p.owned && !p.setting)
     add("info", "Not in Excel yet", `${p.name} was chosen in chat`, `${p.placeholder ? `Your "${p.label}" row just says "${p.placeholder}". ` : ""}Put the part name or link in the cart sheet (${p.label} row) and press Update to make it official. Until then the page fills this gap for you.`);
 
   // frame
@@ -716,9 +730,10 @@ function analyse(d) {
   if (jet && cam) pair(cam.component.replace(/\s*CSI.*$/i, ""), jet.component.replace(/^NVIDIA\s+/i, "").replace(/\s*Dev Kit/i, ""), "CSI ribbon", "off", cam.compat || "");
   if (minutes && mission.minutes) pair(nm.batt, "Mission goal", "Flight time", minutes >= mission.minutes ? "ok" : minutes >= mission.minutes * 0.8 ? "warn" : "bad", `Model says about ${fmt(minutes)} min hover vs your ${mission.minutes} min goal.`);
 
-  const applied = Object.values(parts).filter((p) => p?.status === "decided" && !p.agrees);
-  const priced = (d.cart?.items || []).filter((i) => parseFloat(i.cost) > 0);
-  const spend = { total: priced.reduce((t, i) => t + parseFloat(i.cost), 0), items: priced.map((i) => `${i.component.trim()} $${fmt(parseFloat(i.cost), 2)}`), tracked: (d.cart?.items || []).some((i) => "cost" in i) };
+  const applied = Object.values(parts).filter((p) => p?.status === "decided" && !p.agrees && !p.owned && !p.setting);
+  const priced = (d.cart?.items || []).filter((i) => parseFloat(i.cost) > 0 && roleOf(i.component) !== "total");
+  const sheetTotal = parseFloat((d.cart?.items || []).find((i) => roleOf(i.component) === "total")?.cost);
+  const spend = { total: priced.reduce((t, i) => t + parseFloat(i.cost), 0), items: priced.map((i) => `${i.component.trim()} $${fmt(parseFloat(i.cost), 2)}`), sheetTotal, tracked: (d.cart?.items || []).some((i) => "cost" in i) };
   return { spend, link, parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
 }
 
@@ -747,7 +762,7 @@ function renderGauges(A) {
     vs: `Adds ${fmt(m.addG)} g and ${m.jetW} W (${m.jet.component.replace(/NVIDIA\s+/i, "").split(" Dev")[0]}${m.cam ? " + camera" : ""})` });
   g.push({ sev: m.tw == null ? "warn" : m.tw >= 2 ? "ok" : m.tw >= 1.6 ? "warn" : "bad", label: "Thrust-to-weight", val: fmt(m.tw, 1), unit: ": 1", vs: "2 : 1 or more recommended" });
   g.push({ sev: goal.auwKg ? (m.auw / 1000 <= goal.auwKg ? "ok" : "warn") : "info", label: "All-up weight (est.)", val: fmt(m.auw / 1000, 2), unit: "kg", vs: goal.auwKg ? `Master plan limit ${goal.auwKg} kg (7-inch plan)` : "Estimate; weigh the real build to confirm" });
-  if (A.spend.tracked) g.push({ sev: "info", label: "Spent so far", val: `$${fmt(A.spend.total, 2)}`, unit: "", vs: A.spend.items.join(" · ") || "No costs entered yet" });
+  if (A.spend.tracked) g.push({ sev: "info", label: "Spent so far", val: `$${fmt(A.spend.total, 2)}`, unit: "", vs: (A.spend.items.join(" · ") || "No costs entered yet") + (A.spend.sheetTotal && Math.abs(A.spend.sheetTotal - A.spend.total) > 0.01 ? ` (your Total row says $${fmt(A.spend.sheetTotal, 2)})` : "") });
   const first = ["motor", "esc", "prop", "fc", "battery", "frame", "rx", "pdb", "gps"];
   const ready = first.filter((r) => has(A.parts[r]) && !(r === "rx" && A.rxK?.kind === "tx-module") || (r === "esc" && A.s.esc.found));
   g.push({ sev: ready.length === first.length ? "ok" : ready.length >= first.length - 2 ? "warn" : "bad", label: "Parts for autonomous flight", val: `${ready.length}`, unit: `/ ${first.length}`,
@@ -782,7 +797,7 @@ function drawBox(n) {
     ${n.s ? `<text x="${n.x + 10}" y="${n.y + 38}" font-size="10.5" fill="${n.st === "missing" ? "var(--bad)" : "var(--muted)"}">${esc(clip(n.s, 6.4))}</text>` : ""}
     ${n.s2 ? `<text x="${n.x + 10}" y="${n.y + 53}" font-size="10.5" fill="var(--muted)">${esc(clip(n.s2, 6.4))}</text>` : ""}</g>`;
 }
-const partState = (p, extraBad) => (extraBad || !p ? "missing" : p.status === "decided" ? "decided" : p.status === "chosen" ? "ok" : p.status);
+const partState = (p, extraBad) => (extraBad || !p ? "missing" : p.owned ? "ok" : p.status === "decided" ? "decided" : p.status === "chosen" ? "ok" : p.status);
 const shortName = (p, fb) => (p && has(p) ? (kbFor(p.text)?.short || p.name || fb) : fb).replace(/\s*\(.*\)$/, "");
 const wire = (d, color, w = 2, dash = "", marker = "") =>
   `<path d="${d}" fill="none" stroke="var(--${color})" stroke-width="${w}" stroke-linejoin="round" ${dash ? `stroke-dasharray="${dash}"` : ""} ${marker ? `marker-end="url(#m-${marker})"` : ""}/>`;
