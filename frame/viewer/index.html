@@ -1,0 +1,423 @@
+<title>Quad Frame Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen workbench. Toolbar on top, 3D viewport left, part sheet right (stacks on phones). */
+:root {
+  --bg: #e9edee; --panel: #ffffff; --ink: #141a1d; --muted: #5a666a; --line: #d0d8da; --sunk: #f3f6f7;
+  --accent: #0d6b7a; --accent-ink: #ffffff; --stage: #dfe5e7; --grid: #c3ccce;
+  --c-body: #3a4248; --c-arm: #157887; --c-leg: #8b949a; --c-sel: #e07a1f;
+  --f-display: "Chakra Petch", "Bahnschrift", "Segoe UI", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
+  --accent: #3eb1c2; --accent-ink: #062126; --stage: #12191c; --grid: #24302f;
+  --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
+  --accent: #3eb1c2; --accent-ink: #062126; --stage: #12191c; --grid: #24302f;
+  --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a; color-scheme: dark }
+
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); }
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: var(--panel); }
+.bar h1 { font: 700 1.15rem/1 var(--f-display); margin: 0; letter-spacing: .02em; }
+.bar .spec { font: 500 .75rem var(--f-mono); color: var(--muted); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-left: auto; }
+.tools label { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
+input[type="range"] { accent-color: var(--accent); width: 120px; }
+input[type="checkbox"] { accent-color: var(--accent); }
+button { font: 600 .82rem/1 var(--f-body); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: default; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 370px; min-height: 0; }
+.stage { position: relative; min-height: 0; background: var(--stage); }
+#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.hint { position: absolute; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); font: 500 .75rem var(--f-mono); color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 6px 9px; border-radius: 6px; pointer-events: none; max-width: calc(100% - 24px); }
+.mode { position: absolute; top: 12px; left: 12px; font: 600 .75rem var(--f-mono); color: var(--accent-ink); background: var(--accent); padding: 5px 9px; border-radius: 5px; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 500 .9rem var(--f-mono); }
+
+.side { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; min-height: 0; display: grid; align-content: start; }
+.side section { padding: 16px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.side h2 { font: 600 1.1rem/1.2 var(--f-display); margin: 0; text-wrap: balance; }
+.eyebrow { font: 500 .68rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.parts button { width: 100%; text-align: left; display: flex; align-items: center; gap: 9px; background: transparent; border-color: transparent; font-weight: 500; padding: 7px 8px; }
+.parts button[aria-pressed="true"] { background: var(--sunk); border-color: var(--line); }
+.swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.parts .m { margin-left: auto; font: 400 .75rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+dl.dims { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; margin: 0; font-size: .86rem; }
+dl.dims dt { color: var(--muted); }
+dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.note { font-size: .82rem; color: var(--muted); }
+.kv-group { font: 500 .68rem var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--accent); padding-top: 4px; grid-column: 1 / -1; }
+.empty { color: var(--muted); font-size: .9rem; }
+.status { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
+
+@media (max-width: 760px) {
+  .main { grid-template-columns: 1fr; grid-template-rows: 56vh auto; }
+  .side { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .app { height: auto; min-height: 100%; }
+  .tools { margin-left: 0; }
+}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div style="display:grid;gap:3px">
+      <h1>680 mm quad frame</h1>
+      <span class="spec">PETG · 16 × 5.5 props · body + 4 arms + 4 legs + GPS mast</span>
+    </div>
+    <div class="tools">
+      <label for="explode">Explode <input id="explode" type="range" min="0" max="100" value="0"></label>
+      <label for="props"><input id="props" type="checkbox" checked> Prop discs</label>
+      <label for="box"><input id="box" type="checkbox" checked> Size box</label>
+      <button id="reset" type="button">Reset view</button>
+    </div>
+  </header>
+  <div class="main">
+    <div class="stage" id="stage">
+      <canvas id="view" aria-label="3D model of the drone frame. Drag to orbit, scroll to zoom, click a part to see its dimensions."></canvas>
+      <div class="loading" id="loading">Loading model…</div>
+      <div class="mode" id="mode" hidden>Comment mode: click any spot on the frame</div>
+      <div class="hint" id="hint">Drag to orbit · right-drag to pan · scroll to zoom · click a part</div>
+    </div>
+    <aside class="side" id="side">
+      <section id="detail" aria-live="polite">
+        <span class="eyebrow">Selected part</span>
+        <p class="empty">Click any part of the frame to see its dimensions.</p>
+      </section>
+      <section>
+        <span class="eyebrow">Parts</span>
+        <ul class="parts" id="parts"></ul>
+      </section>
+      <section>
+        <span class="eyebrow">Whole frame</span>
+        <dl class="dims" id="totals"></dl>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// Key dimensions per part (mm), from frame/params.py and the build report.
+const SPECS = {
+  body: { title: "Central body", qty: 1, groups: [
+    ["Envelope", [["Footprint (with arm sockets)", "198.6 × 198.6"], ["Height", "40.5"], ["Socket tip radius", "133"]]],
+    ["Electronics bay", [["Inside size", "90 × 90"], ["Wall", "3"], ["Floor", "5"], ["Stack pattern (Kakute + power board)", "30.5 × 30.5"], ["Standoff height", "8"]]],
+    ["Arm sockets (×4)", [["Tunnel", "28.5 W × 28.5 H"], ["Tunnel depth", "43"], ["Roof (holds inserts)", "7"], ["Arm-to-body bolts", "2 × M3 × 40"], ["Wire hole to bay", "Ø12"]]],
+    ["Other features", [["Battery strap slots (×4)", "22 × 3.5"], ["Battery lead slot", "16 × 10"], ["GPS mast socket", "Ø12.3 × 25 deep"], ["Antenna holes (front)", "Ø4.4 × 2"], ["USB window (side)", "16 × 10"]]],
+    ["Hardware", [["M3 heat-set inserts", "13 (8 roof, 4 stack, 1 mast)"], ["Insert hole", "Ø4.2 × 6"]]],
+  ], print: "Floor down, as modelled. Tunnel roofs bridge 28.5 mm; no supports." },
+  arm: { title: "Arm", qty: 4, groups: [
+    ["Envelope", [["Root to motor centre", "250"], ["Overall length", "273"], ["Width", "28"], ["Height (root → tip)", "28 → 20"]]],
+    ["Motor pad", [["Diameter", "Ø46"], ["Thickness", "6"], ["Screw slots (8)", "r 7.5–15.5, 3.4 wide"], ["Centre hole", "Ø12"], ["Fits", "5010 · 16 mm / 19 mm patterns"]]],
+    ["ESC mount", [["Recess", "52 × 26 × 1.5"], ["Recess centre radius", "250 from frame centre"], ["Zip-tie slots (2)", "4 × 2.4"], ["Wire channel", "10 W × 6 D"]]],
+    ["Joints", [["Body bolts (from root)", "12 and 30"], ["Leg inserts (radius)", "173 and 197"], ["Lightening slots", "3 spans through the web"]]],
+    ["Load check (full thrust 17.1 N)", [["Moment at body exit", "3.53 N·m"], ["Peak stress", "2.1 MPa (limit 15)"], ["Tip deflection hover / max", "0.44 / 1.33"], ["First bending frequency", "~49 Hz"]]],
+  ], print: "Flat side down, diagonally on the bed (209.7 mm footprint). 4 walls." },
+  leg: { title: "Landing leg", qty: 4, groups: [
+    ["Envelope", [["Height", "110"], ["Splay outward", "12°"], ["Strut section", "14 × 16"], ["Foot length", "36"], ["Mount pad", "44 × 16 × 6"]]],
+    ["Mounting", [["Bolts", "2 × M3 × 8 into arm inserts"], ["Bolt spacing", "24"], ["Counterbore", "Ø6.4 × 3"], ["Mount radius", "185 from frame centre"]]],
+    ["Load check (4 g landing on 2 legs)", [["Force per leg", "45 N"], ["Strut stress", "4.7 MPa (limit 15)"], ["Pull on the outer bolt", "73 N"]]],
+  ], print: "On its side (the 16 mm face)." },
+  mast: { title: "GPS mast", qty: 1, groups: [
+    ["Envelope", [["Tube", "Ø12 × 100"], ["Inserted into body", "20"], ["GPS plate", "30 × 30 × 3"], ["Cable bore", "Ø7"]]],
+    ["Fits", [["SEQURE M10-252Q", "25 × 25 (M10-182Q: 18 × 18)"], ["Lock screw", "M3 from the side, on a flat"]]],
+  ], print: "Upside down: GPS plate on the bed, tube standing up." },
+};
+const COLORS = { body: "--c-body", arm: "--c-arm", leg: "--c-leg", mast: "--c-leg" };
+
+// ---------- scene ----------
+const canvas = $("view"), stage = $("stage");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 5, 5000);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445055, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(300, -400, 700); scene.add(sun);
+const grid = new THREE.GridHelper(900, 18); grid.rotation.x = Math.PI / 2; grid.position.z = -106; scene.add(grid);
+
+const parts = [];        // {id, geo, label, mesh, base: Matrix4, dir: Vector3}
+let selected = null, boxHelper = null, propGroup = new THREE.Group();
+scene.add(propGroup);
+
+function applyTheme() {
+  scene.background = new THREE.Color(css("--stage"));
+  grid.material.color = new THREE.Color(css("--grid"));
+  for (const p of parts) p.mesh.material.color = new THREE.Color(css(COLORS[p.geo]));
+  if (selected) selected.mesh.material.emissive = new THREE.Color(css("--c-sel")).multiplyScalar(0.55);
+  if (boxHelper) boxHelper.material.color = new THREE.Color(css("--c-sel"));
+  propGroup.children.forEach((m) => (m.material.color = new THREE.Color(css("--accent"))));
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function b64(str, Type) {
+  const bin = atob(str), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Type(bytes.buffer);
+}
+
+let DATA;
+async function load() {
+  const res = await fetch("model.json");
+  DATA = await res.json();
+  const geos = {};
+  for (const [k, g] of Object.entries(DATA.geometries)) {
+    let geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.BufferAttribute(b64(g.pos, Float32Array), 3));
+    geom.setIndex(new THREE.BufferAttribute(b64(g.idx, Uint32Array), 1));
+    geom = geom.toNonIndexed(); geom.computeVertexNormals(); geom.computeBoundingBox();
+    geos[k] = geom;
+  }
+  for (const inst of DATA.instances) {
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0.05 });
+    const mesh = new THREE.Mesh(geos[inst.geo], mat);
+    const base = new THREE.Matrix4().fromArray(inst.m);
+    mesh.matrixAutoUpdate = false; mesh.matrix.copy(base); mesh.userData.id = inst.id;
+    scene.add(mesh);
+    const ang = THREE.MathUtils.degToRad(inst.angle ?? 0);
+    const dir = inst.geo === "arm" ? new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0)
+      : inst.geo === "leg" ? new THREE.Vector3(Math.cos(ang) * 0.6, Math.sin(ang) * 0.6, -1)
+      : inst.geo === "mast" ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3();
+    parts.push({ id: inst.id, geo: inst.geo, label: inst.label || SPECS[inst.geo].title, mesh, base, dir });
+  }
+  // Prop discs at the motors.
+  for (const inst of DATA.instances.filter((i) => i.geo === "arm")) {
+    const a = THREE.MathUtils.degToRad(inst.angle);
+    const disc = new THREE.Mesh(new THREE.RingGeometry(10, DATA.propD / 2, 64),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }));
+    disc.position.set(Math.cos(a) * DATA.motorR, Math.sin(a) * DATA.motorR, DATA.padTop + 45);
+    disc.userData.arm = inst.id; disc.raycast = () => {};
+    propGroup.add(disc);
+  }
+  applyTheme(); buildList(); buildTotals(); resetView(); resize();
+  $("loading").hidden = true;
+  restoreHash();
+}
+
+function resetView() {
+  camera.position.set(520, -620, 430); controls.target.set(0, 0, 0); controls.update(); reportPins();
+}
+$("reset").addEventListener("click", resetView);
+
+// ---------- explode ----------
+let explode = 0;
+function setExplode(v) {
+  explode = v;
+  for (const p of parts) {
+    const off = p.dir.clone().multiplyScalar(90 * v);
+    p.mesh.matrix.copy(new THREE.Matrix4().makeTranslation(off.x, off.y, off.z).multiply(p.base));
+    p.mesh.matrixWorldNeedsUpdate = true;
+  }
+  propGroup.children.forEach((d) => {
+    const p = parts.find((q) => q.id === d.userData.arm);
+    const a = Math.atan2(p.dir.y, p.dir.x);
+    d.position.x = Math.cos(a) * (DATA.motorR + 90 * v); d.position.y = Math.sin(a) * (DATA.motorR + 90 * v);
+  });
+  updateBox(); reportPins();
+}
+$("explode").addEventListener("input", (e) => setExplode(e.target.value / 100));
+$("props").addEventListener("change", (e) => (propGroup.visible = e.target.checked));
+$("box").addEventListener("change", updateBox);
+
+// ---------- selection + details ----------
+function buildList() {
+  const seen = new Set();
+  $("parts").innerHTML = parts.map((p) => {
+    const r = DATA.report.parts[p.geo];
+    return `<li><button type="button" data-id="${p.id}" aria-pressed="false"><span class="swatch" style="background:var(${COLORS[p.geo]})"></span>${esc(p.label)}<span class="m">${r ? `~${Math.round(r.est_mass_g)} g` : ""}</span></button></li>`;
+  }).join("");
+}
+$("parts").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-id]"); if (b) select(parts.find((p) => p.id === b.dataset.id), null, true);
+});
+
+function buildTotals() {
+  const r = DATA.report.parts;
+  const mass = Object.values(r).reduce((t, p) => t + p.est_mass_g * p.count, 0);
+  $("totals").innerHTML = [["Wheelbase (motor to motor)", "680 mm"], ["Prop size", "16 × 5.5 in"], ["Prop tip gap", `${DATA.report.prop_tip_gap_mm} mm`],
+    ["Printed mass (est.)", `${Math.round(mass)} g`], ["Bed needed", "220 × 220 mm"], ["Material", "PETG, 4 walls"]]
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+}
+
+function worldBox(p) { return new THREE.Box3().setFromObject(p.mesh); }
+
+function updateBox() {
+  if (boxHelper) { scene.remove(boxHelper); boxHelper = null; }
+  if (!selected || !$("box").checked) return;
+  boxHelper = new THREE.Box3Helper(worldBox(selected), new THREE.Color(css("--c-sel")));
+  scene.add(boxHelper);
+}
+
+let lastHit = null;   // {part, local: Vector3 (assembled coords), page: {x,y}}
+function select(p, hit, frame) {
+  if (selected) selected.mesh.material.emissive = new THREE.Color(0x000000);
+  selected = p;
+  document.querySelectorAll("#parts [data-id]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === p?.id)));
+  if (!p) { $("detail").innerHTML = `<span class="eyebrow">Selected part</span><p class="empty">Click any part of the frame to see its dimensions.</p>`; updateBox(); return; }
+  p.mesh.material.emissive = new THREE.Color(css("--c-sel")).multiplyScalar(0.55);
+  lastHit = hit;
+  const s = SPECS[p.geo], r = DATA.report.parts[p.geo];
+  const bb = p.mesh.geometry.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
+  const rows = [["Measured from the model", [["Bounding box (L × W × H)", `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)}`],
+    ["Est. mass", `${r.est_mass_g} g`], ["Quantity", `${s.qty}`], ["Print footprint", `${r.footprint_mm[0]} × ${r.footprint_mm[1]}`], ["Fits 220 mm bed", r.fits_bed ? "Yes" : "No"]]], ...s.groups];
+  const where = hit ? `<p class="note">Clicked at ${hit.region}: x ${hit.local.x.toFixed(1)}, y ${hit.local.y.toFixed(1)}, z ${hit.local.z.toFixed(1)} mm</p>` : "";
+  $("detail").innerHTML = `<span class="eyebrow">Selected part · all sizes in mm</span><h2>${esc(p.label)}</h2>${where}
+    <dl class="dims">${rows.map(([g, kv]) => `<div class="kv-group">${esc(g)}</div>` + kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")).join("")}</dl>
+    <p class="note"><b>Print:</b> ${esc(s.print)}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" type="button" id="comment-btn" ${canComment() ? "" : "hidden"}>Comment on this ${hit ? "spot" : "part"}</button></div>
+    <p class="status" id="comment-status"></p>`;
+  $("comment-btn")?.addEventListener("click", (e) => startComment(p, lastHit, e.currentTarget));
+  updateBox();
+  if (frame) { const c = new THREE.Vector3(); worldBox(p).getCenter(c); controls.target.lerp(c, 0.5); controls.update(); reportPins(); }
+  try { history.replaceState(null, "", "#" + p.id); } catch {}
+}
+
+function restoreHash() {
+  const id = location.hash.slice(1); const p = parts.find((q) => q.id === id); if (p) select(p, null, true);
+}
+
+// Where on a part a point is, in words (used in comment labels).
+function regionOf(p, local) {
+  if (p.geo === "arm") {
+    const x = local.x;               // distance from the arm root
+    return x < 43 ? "root (inside the body socket)" : x < 135 ? "inner span" : x < 186 ? "ESC mount" : x < 225 ? "outer span" : "motor pad";
+  }
+  if (p.geo === "body") {
+    const r = Math.hypot(local.x, local.y);
+    return r < 45 ? "electronics bay" : r < 92 ? "socket boss" : "arm socket";
+  }
+  if (p.geo === "leg") return local.z > -10 ? "mount pad" : local.z < -100 ? "foot" : "strut";
+  return local.z > 95 ? "GPS plate" : "tube";
+}
+
+// ---------- picking ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(ev) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(parts.map((p) => p.mesh), false);
+  if (!hits.length) return null;
+  const h = hits[0], p = parts.find((q) => q.mesh === h.object);
+  const partLocal = h.point.clone().applyMatrix4(p.mesh.matrix.clone().invert());          // in the part's own frame
+  const assembled = partLocal.clone().applyMatrix4(p.base);                                 // assembled (not exploded) world point
+  return { part: p, local: partLocal, assembled, region: regionOf(p, partLocal), page: { x: ev.pageX, y: ev.pageY } };
+}
+let down = null;
+canvas.addEventListener("pointerdown", (e) => (down = { x: e.clientX, y: e.clientY }));
+canvas.addEventListener("pointerup", (e) => {
+  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+  const hit = pick(e);
+  if (!hit) { if (!commentMode) select(null); return; }
+  select(hit.part, hit, false);
+  if (commentMode) startComment(hit.part, hit, null);
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (e.buttons) return;
+  canvas.style.cursor = pick(e) ? (commentMode ? "crosshair" : "pointer") : "grab";
+});
+
+// ---------- comments (pins anchored to points on parts) ----------
+let comments = null, ca = null, commentMode = false, threads = [];
+const canComment = () => !!(ca || comments);
+// Anchor names are what Claude reads as the comment's location, so they stay human-readable:
+// "Arm 2 (rear-left) · motor pad @ 241.3,250.0,48.1 mm" (assembled frame coordinates, Z up).
+const anchorName = (p, hit) => hit ? `${p.label} · ${hit.region} @ ${hit.assembled.x.toFixed(1)},${hit.assembled.y.toFixed(1)},${hit.assembled.z.toFixed(1)} mm` : p.label;
+function parseAnchor(a) {
+  const m = /^(.+?)(?: · [^@]*)?(?: @ (-?[\d.]+),(-?[\d.]+),(-?[\d.]+) mm)?$/.exec(a || "");
+  if (!m) return null;
+  const p = parts.find((q) => q.label === m[1].trim()); if (!p) return null;
+  let pt;
+  if (m[2] !== undefined) pt = new THREE.Vector3(+m[2], +m[3], +m[4]);
+  else { pt = new THREE.Vector3(); p.mesh.geometry.boundingBox.getCenter(pt); pt.applyMatrix4(p.base); }
+  return { p, pt };
+}
+function toPage(p, assembledPt) {
+  const off = p.dir.clone().multiplyScalar(90 * explode);
+  const v = assembledPt.clone().add(off).project(camera);
+  if (v.z > 1 || v.z < -1) return null;
+  const r = canvas.getBoundingClientRect();
+  return { x: r.left + (v.x + 1) / 2 * r.width + scrollX, y: r.top + (1 - v.y) / 2 * r.height + scrollY };
+}
+function reportPins() {
+  if (!ca) return;
+  const map = {};
+  for (const t of threads) { const a = parseAnchor(t.anchor); if (!a) continue; const pt = toPage(a.p, a.pt); if (pt) map[t.id] = pt; }
+  try { ca.placed(map); } catch {}
+}
+function setStatus(msg) { const s = $("comment-status"); if (s) s.textContent = msg; }
+
+async function startComment(p, hit, btn) {
+  const s = SPECS[p.geo];
+  const label = (`${p.label}${hit ? ", " + hit.region : ""}`).slice(0, 120);
+  const detail = (`${s.title}. ` + s.groups.slice(0, 2).map(([g, kv]) => g + ": " + kv.map(([k, v]) => `${k} ${v}`).join("; ")).join(". ")).slice(0, 1000);
+  try {
+    if (ca) {
+      const at = hit?.page || (btn ? btn : { x: innerWidth / 2 + scrollX, y: innerHeight / 2 + scrollY });
+      const r = await ca.compose(anchorName(p, hit), at, { label, detail });
+      if (!r.opened) setStatus("Close the open comment box first, then try again.");
+    } else if (comments) {
+      const r = await comments.openComposer({ element: $("detail") });
+      if (!r.opened) setStatus("Close the open comment box first, then try again.");
+    }
+  } catch (err) {
+    const code = err?.code;
+    if (code === "unavailable" || code === "forbidden" || code === "not_granted") { ca = null; comments = null; $("comment-btn")?.setAttribute("hidden", ""); setStatus("Commenting is off for this view."); }
+    else if (code === "rate_limited") setStatus("Too many comment boxes opened at once. Wait a moment.");
+    else setStatus("Couldn't open the comment box. Try again.");
+  }
+}
+
+(async () => {
+  comments = window.claude?.use ? await window.claude.use("comments") : null;
+  if (!comments) return;
+  try {
+    ca = await comments.customAnchors({
+      mode(on) { commentMode = on; $("mode").hidden = !on; $("hint").hidden = on; if (!on) threads = []; reportPins(); },
+      threads(list) { threads = list; reportPins(); },
+      reveal(id) {
+        const t = threads.find((q) => q.id === id); const a = t && parseAnchor(t.anchor);
+        if (a) { select(a.p, null, false); controls.target.copy(a.pt.clone().add(a.p.dir.clone().multiplyScalar(90 * explode))); controls.update(); reportPins(); }
+      },
+      composing() {},
+    });
+    reportPins();
+  } catch { ca = null; }   // fall back to the shell's composer on the details panel
+  if (selected) select(selected, lastHit, false);
+})();
+
+// ---------- render loop ----------
+function resize() {
+  const r = stage.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix(); reportPins();
+}
+new ResizeObserver(resize).observe(stage);
+controls.addEventListener("change", reportPins);
+addEventListener("scroll", reportPins, { passive: true });
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+
+load().catch((e) => { $("loading").textContent = "Couldn't load the model (" + e.message + "). Reload the page."; });
+</script>
