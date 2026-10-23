@@ -60,6 +60,12 @@ def rows_of(ws):
     return out
 
 
+def links_of(ws):
+    """Hyperlink targets keyed by (row, column), 0-based like rows_of()."""
+    return {(c.row - 1, c.column - 1): c.hyperlink.target
+            for row in ws.iter_rows() for c in row if c.hyperlink and c.hyperlink.target}
+
+
 def norm(s):
     return re.sub(r"[^a-z0-9]+", " ", str(s or "").lower()).strip()
 
@@ -114,15 +120,20 @@ def parse_master(rows):
     return {"title": title, "mission": mission, "items": items, "subtotal": subtotal}
 
 
-def parse_cart(rows):
+def parse_cart(rows, links=None):
     h = find_header(rows, "component", "link")
     if h is None:
         return None
     m = col_map(rows[h], {"component": ["component"], "link": ["link"], "specs": ["spec"], "qty": ["quantity", "qty"], "cost": ["cost", "price"]})
     items = []
-    for r in rows[h + 1:]:
+    for i, r in enumerate(rows[h + 1:], start=h + 1):
         if get(r, m, "component"):
-            items.append({k: get(r, m, k) for k in m})
+            item = {k: get(r, m, k) for k in m}
+            # The Links column usually shows a short label; the real product page is the cell's hyperlink.
+            url = (links or {}).get((i, m.get("link")))
+            if url:
+                item["url"] = url
+            items.append(item)
     return {"items": items}
 
 
@@ -192,6 +203,7 @@ def main():
     wb = openpyxl.load_workbook(io.BytesIO(body), data_only=True)
 
     sheets = {ws.title.strip(): rows_of(ws) for ws in wb.worksheets}
+    links = {ws.title.strip(): links_of(ws) for ws in wb.worksheets}
     pick = lambda *keys: next((v for k, v in sheets.items() if any(x in norm(k) for x in keys)), [])
     data = {
         "source": {
@@ -203,7 +215,7 @@ def main():
             "sheets": list(sheets),
         },
         "master": parse_master(pick("master", "build")),
-        "cart": parse_cart(pick("cart")),
+        "cart": parse_cart(pick("cart"), next((v for k, v in links.items() if "cart" in norm(k)), {})),
         "motor": parse_motor(pick("motor")),
         "efficiency": parse_efficiency(pick("efficien")),
     }

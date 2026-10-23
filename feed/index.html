@@ -178,6 +178,12 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
     <ul class="findings" id="findings"></ul>
   </section>
 
+  <section class="panel" aria-labelledby="conns-h">
+    <div class="panel-head"><h2 id="conns-h">Connector check</h2><span class="small muted" id="conns-sum"></span></div>
+    <p class="small muted">Read from each product page linked in your Excel sheet: what plug each part has, and what it has to mate with.</p>
+    <div class="scroll"><table id="conns-table"></table></div>
+  </section>
+
   <section class="panel" aria-labelledby="wire-h">
     <div class="panel-head"><h2 id="wire-h">Wiring</h2><span class="small muted">Drawn from your cart. Accent boxes were chosen in chat, dashed red boxes are missing, faded boxes are phase 2.</span></div>
     <div class="legend">
@@ -249,6 +255,7 @@ const DECISIONS = {
   parts: {
     radio: { owned: true, label: "Radio controller", name: "RadioMaster Boxer (radio)", specs: "EdgeTX handheld radio with built-in 2.4 GHz ExpressLRS (up to 1 W in the US per listings), a built-in WiFi Backpack and a standard JR module bay." },
     fc: { label: "Flight Controller", name: "Holybro Kakute H7 v1.5 (flight controller)", specs: "Replaces the out-of-stock v2. ICM-42688-P IMU, SPA06 barometer, 6 UARTs, 7–42 V input, onboard 5 V/2 A and 9 V/3 A BECs (Holybro listing)." },
+    charger: { label: "Charger", name: "HTRC C150 AC/DC 150 W balance charger", specs: "1–6S LiPo, 10 A / 150 W (about 6 A on 6S), 4 mm banana output with leads, JST-XH balance board, about $42–58." },
     rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
     telem: { setting: true, label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via the radio's WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
     gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
@@ -273,9 +280,20 @@ const KB = [
   { id: "nomad", re: /nomad/i, name: "RadioMaster Nomad (ELRS TX module)", short: "Nomad", kind: "tx-module", notes: [] },
   { id: "boxer", re: /boxer/i, name: "RadioMaster Boxer (radio)", short: "Boxer", kind: "radio", bay: "JR", internalElrs: true, backpack: true, notes: [] },
   { id: "pocket", re: /\bpocket\b/i, name: "RadioMaster Pocket (ELRS radio)", short: "Pocket", kind: "radio", bay: "Nano", internalElrs: true, backpack: null, notes: [] },
-  { id: "xr3", re: /\bxr3\b/i, name: "RadioMaster XR3 (ELRS receiver)", short: "XR3", kind: "rx", notes: [] },
+  { id: "xr3", re: /\bxr3\b/i, name: "RadioMaster XR3 (ELRS receiver)", short: "XR3", kind: "rx", esp: "ESP32-C3", bands: "2.4 GHz or 900 MHz", notes: [] },
+  // Facts below come from the product pages linked in the cart sheet (read 2026-10-23).
+  { id: "rp3", re: /\brp3\b|rp3-expresslrs/i, name: "RadioMaster RP3 V2 (ELRS 2.4 GHz receiver)", short: "RP3", kind: "rx", esp: "ESP8285", bands: "2.4 GHz", weight: 4.6, notes: [] },
+  { id: "motor5010", re: /3256808405937047|motor and esp/i, name: "5010 360KV motors + 4 × 30 A OPTO ESC set (AliExpress)", short: "5010 + 30 A ESC set", kind: "motor", notes: [] },
+  { id: "tprop", re: /3256808508291370|t-?motor carbon/i, name: "T-Motor-style carbon props, 2 CW + 2 CCW (AliExpress)", short: "CF props", kind: "prop", notes: [] },
+  { id: "yr50b", re: /3256809180946860|yr50b/i, name: "iFlight YR50B_S finder buzzer (built-in battery, LED)", short: "iFlight YR50B_S", kind: "buzzer", selfPowered: true, weight: 4, notes: [] },
+  { id: "hoovo6200", re: /hoovo|B0B1D9GQ5M/i, name: "HOOVO 6S 6200 mAh 120C LiPo (EC5)", short: "HOOVO 6S 6200", kind: "battery",
+    battery: { cells: 6, mah: 6200, c: 120, conn: "EC5", weight: 837, dims: "152 × 48.5 × 48 mm", balance: "JST-XH 7-pin" }, notes: [] },
+  { id: "pdbxt60", re: /B0FPQZ2598|pdb-xt60|power hub pdb/i, name: "30.5 mm XT60 power board, 5 V/3 A + 12 V/0.5 A BEC", short: "XT60 power board", kind: "pdb",
+    conn: "XT60", cells: [2, 6], amps: 25, burst: 30, notes: [] },
+  { id: "rmbatt2s", re: /2s-7-4v-6200mah|2s 7\.4v 6200/i, name: "RadioMaster 2S 6200 mAh radio battery (XT30 + JST-XH)", short: "2S 6200 radio pack", kind: "radiobatt", notes: [] },
+  { id: "c150", re: /htrc|\bc150\b/i, name: "HTRC C150 AC/DC 150 W balance charger", short: "HTRC C150", kind: "charger", notes: [] },
   { id: "m10", re: /micro\s*m10/i, name: "Holybro Micro M10 (GPS + compass)", short: "Micro M10", kind: "gps", compass: true, conn: "JST-GH", weight: 14, notes: [] },
-  { id: "sequre-m10", re: /sequre[-\s]?m10|m10-25/i, name: "Sequre M10-252Q (GPS + QMC5883 compass)", short: "Sequre M10-252Q", kind: "gps", compass: true, conn: "SH1.0 6-pin", weight: 12, notes: [] },
+  { id: "sequre-m10", re: /sequre[-\s]?m10|m10-25|3256810183446273/i, name: "SEQURE M10 GPS with QMC5883 compass (M10-182Q / 252Q)", short: "SEQURE M10 (Q)", kind: "gps", compass: true, conn: "SH1.0 6-pin", weight: 12, notes: [] },
   { id: "kakute15", re: /kakute[-\s]?h7[-\s]?v?1\.5|kakute-h7-v1-5|kakute-h7-v1-stacks/i, name: "Holybro Kakute H7 v1.5", short: "Kakute H7 v1.5", kind: "fc",
     vin: [7, 42], bec5: "5 V / 2 A", bec9: "9 V / 3 A", weight: 8,
     notes: [{ sev: "warn", t: "Kakute H7 v1.5 has a single IMU (ICM-42688-P)",
@@ -288,14 +306,16 @@ const KB = [
       { sev: "warn", t: "Kakute H7 v2 is out of production", d: "Holybro has replaced it with the Kakute H7 v1.5, which mounts and wires the same way." }], weight: 8 },
   { id: "vifly", re: /vifly|finder\s*2/i, name: "Vifly Finder 2 (lost-model buzzer)", short: "Vifly Finder 2", kind: "buzzer", notes: [] },
   { id: "pixhawk6c", re: /pixhawk\s*6c/i, name: "Holybro Pixhawk 6C", short: "Pixhawk 6C", kind: "fc", notes: [] },
-  { id: "ovonic", re: /ovonic/i, name: "OVONIC 6S LiPo", short: "OVONIC 6S", kind: "battery", notes: [] },
+  { id: "ovonic", re: /ovonic|B0DNLWDTDT/i, name: "OVONIC 6S 5000 mAh 130C LiPo (XT60)", short: "OVONIC 6S 5000", kind: "battery",
+    battery: { cells: 6, mah: 5000, c: 130, conn: "XT60", weight: 689, dims: "158 × 45.5 × 52 mm", balance: "JST-XH 7-pin" }, notes: [] },
 ];
 const kbFor = (text) => KB.find((k) => k.re.test(text || ""));
 const has = (p) => !!p && (p.status === "chosen" || p.status === "decided");
+const A_RADIO = (parts) => parts.radio;
 
 /* ---------- reading the sheet ---------- */
 const ROLES = [
-  ["radiobatt", /radio\s*batt?e?ry/i], ["charger", /charger/i], ["total", /^\s*total\s*$/i],
+  ["radiobatt", /radio\s*batt?e?ry/i], ["battery2", /\b(backup|spare)\b/i], ["charger", /charger/i], ["total", /^\s*total\s*$/i],
   ["motor", /motor/i], ["esc", /\besc\b/i], ["prop", /propell|\bprop\b/i], ["buzzer", /buzzer/i],
   ["gps", /\bgps\b/i], ["fc", /flight controller|\bfc\b/i], ["compass", /compass/i], ["battery", /battery/i],
   ["frame", /frame/i], ["fpv", /fpv cam/i], ["percam", /perception/i], ["vtx", /vtx|video trans/i],
@@ -325,9 +345,17 @@ function cartParts(d) {
   for (const it of d.cart?.items || []) {
     const role = roleOf(it.component);
     const text = it.link || "";
+    const full = it.url ? `${text} ${it.url}` : text; // display label + hyperlink, for recognising the product
+    const hit = kbFor(full);
     const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : (/^(rx|tx|fc|esc|gps|props?|buzzer|motor|radio|tbd|todo|\?+|-+)$/i.test(text.trim()) || text.trim().toLowerCase() === String(it.component).trim().toLowerCase()) ? "placeholder" : /^(no need|not needed|none|n\/?a)$/i.test(text.trim()) ? "notneeded" : "chosen";
     const cost = parseFloat(it.cost), qty = parseFloat(it.qty);
     const bought = status === "placeholder" && cost > 0; // a bare name with a price is a part already bought
+    if (hit && (status === "chosen" || bought)) {
+      parts[role] = { role, label: it.component.trim(), text: full, specs: it.specs || (role === "motor" ? FALLBACK.motorSpecs : ""), specsFallback: !it.specs && role === "motor",
+        status: "chosen", name: hit.name, url: it.url || linkOf(text), cost: cost > 0 ? cost : null, qty: qty > 0 ? qty : null, bought, fromLink: !!it.url,
+        owned: !!DECISIONS.parts[role]?.owned };
+      continue;
+    }
     const pick = bought && DECISIONS.parts[role];
     if (pick) {
       parts[role] = { role, label: it.component.trim(), text: pick.name, specs: pick.specs, status: "chosen", name: pick.name, url: pick.url || null,
@@ -335,7 +363,7 @@ function cartParts(d) {
       continue;
     }
     parts[role] = { role, label: it.component.trim(), text, specs: it.specs || (role === "motor" ? FALLBACK.motorSpecs : ""), specsFallback: !it.specs && role === "motor",
-      status: bought ? "chosen" : status, name: bought ? `${it.component.trim()} (bought, unnamed)` : status === "chosen" ? niceName(text) : "", url: linkOf(text),
+      status: bought ? "chosen" : status, name: bought ? `${it.component.trim()} (bought, unnamed)` : status === "chosen" ? niceName(full) : "", url: it.url || linkOf(text),
       cost: cost > 0 ? cost : null, qty: qty > 0 ? qty : null, bought };
   }
   // The sheet lists the TX module under "RC Receiver" and the radio under "Telemetry"; move them to their real roles.
@@ -353,10 +381,20 @@ function cartParts(d) {
 const rx = (s, re, f = Number) => { const m = (s || "").match(re); return m ? f(m[1]) : null; };
 const rx2 = (s, re) => { const m = (s || "").match(re); return m ? [Number(m[1]), Number(m[2])] : null; };
 
+function battSpecs(p) {
+  const bt = (p?.text || "") + " " + (p?.specs || "");
+  const k = kbFor(p?.text)?.battery || {};
+  return {
+    cells: k.cells ?? rx(bt, /(\d)S\b/i), mah: k.mah ?? rx(bt, /(\d{3,5})\s*mAh/i), c: k.c ?? rx(bt, /(\d+)\s*C\b/), volts: rx(bt, /([\d.]+)\s*V\b/i),
+    conn: k.conn ?? (bt.match(/XT\s?90|XT\s?60|XT\s?30|EC5|AS150/i) || [null])[0]?.replace(/\s/g, "").toUpperCase(),
+    chem: /li-?ion|21700|18650/i.test(bt) ? "Li-ion" : /lipo|li-po|hoovo|ovonic/i.test(bt) ? "LiPo" : null,
+    weight: k.weight ?? null, dims: k.dims ?? null, balance: k.balance ?? null, name: kbFor(p?.text)?.short || p?.name || "",
+  };
+}
+
 function readSpecs(parts) {
   const ms = (parts.motor?.specs || "") + " " + (parts.motor?.text || "");
   const escText = (parts.esc?.specs || "") + " " + (parts.esc?.text || "") + " " + ms;
-  const bt = (parts.battery?.text || "") + " " + (parts.battery?.specs || "");
   const cells = rx2(ms, /(\d)\s*-\s*(\d)\s*(?:S\b|Li)/i);
   const props = rx2(ms, /props?\s+of\s+(\d+)\s*-\s*(\d+)/i);
   const motorEsc = rx2(ms, /ESC:\s*(\d+)\s*-\s*(\d+)\s*A/i);
@@ -375,11 +413,8 @@ function readSpecs(parts) {
       hz: rx(escText, /up to\s*(\d+)\s*Hz/i), bullet: rx(escText, /(\d(?:\.\d)?)\s*mm\s*banana/i, String),
       dshot: /dshot/i.test(escText), firmware: (escText.match(/AM32|BLHeli_?32|BLHeli_?S|Bluejay/i) || [null])[0],
     },
-    battery: {
-      cells: rx(bt, /(\d)S\b/i), mah: rx(bt, /(\d{3,5})\s*mAh/i), c: rx(bt, /(\d+)\s*C\b/), volts: rx(bt, /([\d.]+)\s*V\b/i),
-      conn: (bt.match(/XT\s?90|XT\s?60|XT\s?30|EC5|AS150/i) || [null])[0]?.replace(/\s/g, "").toUpperCase(),
-      chem: /li-?ion|21700|18650/i.test(bt) ? "Li-ion" : /lipo|li-po/i.test(bt) ? "LiPo" : null,
-    },
+    battery: battSpecs(parts.battery),
+    battery2: parts.battery2 && parts.battery2.status === "chosen" ? battSpecs(parts.battery2) : null,
   };
 }
 
@@ -447,8 +482,8 @@ function analyse(d) {
   const gpsPlan = masterPick(d, "gps");
   const capWh = s.battery.mah && battV ? s.battery.mah / 1000 * battV : null;
   const defaults = {
-    motorG: s.motor.weight ?? 80, escG: 28, propG: 25, fcG: fcRow?.weight_g ?? kbFor(parts.fc?.text)?.weight ?? 10, gpsG: kbFor(parts.gps?.text)?.weight ?? gpsPlan?.weight_g ?? 15, rxG: 3,
-    battG: capWh ? Math.round(capWh / 0.145) : 750, frameG: 550, wiringG: 120, payloadG: mission.payload ?? 200,
+    motorG: s.motor.weight ?? 80, escG: 28, propG: 25, fcG: fcRow?.weight_g ?? kbFor(parts.fc?.text)?.weight ?? 10, gpsG: kbFor(parts.gps?.text)?.weight ?? gpsPlan?.weight_g ?? 15, rxG: kbFor(parts.rx?.text)?.weight ?? 3,
+    battG: s.battery.weight ?? (capWh ? Math.round(capWh / 0.145) : 750), frameG: 550, wiringG: 120, payloadG: mission.payload ?? 200,
     usable: 80, avionicsW: 5, mah: s.battery.mah ?? 5000,
   };
   const I = {}; for (const k in defaults) I[k] = INPUTS[k] ?? defaults[k];
@@ -459,6 +494,9 @@ function analyse(d) {
   const vNom = v;
   const iTotalHover = iHover != null ? 4 * iHover + I.avionicsW / vNom : null;
   const minutes = iTotalHover ? (I.mah / 1000) * (I.usable / 100) / iTotalHover * 60 : null;
+  const minutesWith = (mah, g) => { const i = currentFor(curve, (auw - I.battG + g) / 4); return i != null && mah ? (mah / 1000) * (I.usable / 100) / (4 * i + I.avionicsW / v) * 60 : null; };
+  const b2 = s.battery2;
+  const minutesBackup = b2 ? minutesWith(b2.mah, b2.weight ?? Math.round(b2.mah / 1000 * 22.2 / 0.145)) : null;
   const tw = top ? 4 * top.pull / auw : null;
   const iMaxTotal = top ? 4 * top.i + I.avionicsW / vNom : null;
   const hoverPct = top ? hoverPull / top.pull * 100 : null;
@@ -469,7 +507,7 @@ function analyse(d) {
   const jetW = rx(jet?.specs, /~?(\d+)\s*W\b/i) ?? 12;
   const iHover2 = currentFor(curve, (auw + addG) / 4);
   const minutes2 = iHover2 != null ? (I.mah / 1000) * (I.usable / 100) / (4 * iHover2 + (I.avionicsW + (jet ? jetW : 0)) / vNom) * 60 : null;
-  const model = { v, prop, volts, curves, curve, I, defaults, auw, hoverPull, iHover, top, minutes, tw, iMaxTotal, hoverPct, minutes2, addG, jet, cam, jetW, outOfData };
+  const model = { minutesBackup, v, prop, volts, curves, curve, I, defaults, auw, hoverPull, iHover, top, minutes, tw, iMaxTotal, hoverPct, minutes2, addG, jet, cam, jetW, outOfData };
 
   /* --- checks --- */
   const P = (r) => parts[r] || { status: "missing", label: r };
@@ -501,7 +539,7 @@ function analyse(d) {
     add(ok ? "ok" : "warn", "Props", `${prop} props ${ok ? "are inside" : "are outside"} the motor's ${s.motor.propMin}–${s.motor.propMax}" range`,
       eff.choice ? `This is the combo marked "${eff.choice.note}" on your Efficiency sheet. Its best-balance pick is ${eff.best?.v} V · ${eff.best?.prop}.` : "");
   }
-  if (has(P("prop")))
+  if (has(P("prop")) && kbFor(P("prop").text)?.id !== "tprop")
     add("warn", "Props", "Confirm the prop listing matches your chosen size and the motor's prop mount",
       `${P("prop").bought ? "Your prop row has a price but no model or size." : `The prop row links to ${P("prop").name || "a listing"} without a size.`} Check it is ${prop} and that its hub fits the ${s.motor.model || "motor"}'s prop adapter${s.motor.shaft ? ` (${s.motor.shaft} mm shaft)` : ""}. Buy CW and CCW pairs, plus spares.`);
 
@@ -517,6 +555,12 @@ function analyse(d) {
   if (P("esc").status === "missing" && s.esc.found)
     add("info", "ESC", "ESC row is empty, but the motor listing includes a 30 A ESC", "Make sure you are ordering 4 ESCs from that listing (one per motor), and fill in the ESC row so the sheet stays accurate.");
   const fcInfo = kbFor(parts.fc?.text);
+  if (kbFor(P("motor").text)?.id === "motor5010") {
+    add("warn", "ESC", "The listing title says the ESCs are 2–4S, but the ESC label in its photos reads 2–6S", "Your 6S packs reach 25.2 V when full. When the ESCs arrive, check the printed label and the large capacitor (it should be rated 35 V or more). If they really are 2–4S, they will fail on 6S.", true);
+    add("warn", "Motor", "Make sure you received the 360 KV version", "The listing sells both 360 KV and 750 KV. Your Motor sheet and the 30 A ESCs assume 360 KV; 750 KV on 6S with 16-inch props would pull far more current than the ESCs can take. The KV is printed on the motor.");
+  }
+  if (kbFor(P("prop").text)?.id === "tprop")
+    add("warn", "Props", "Pick the 1655 size from the prop listing", "It sells 11- to 18-inch carbon props (1155 to 1855). Your Efficiency sheet's choice is 16 × 5.5, which is the 1655. Carbon props are stiff and sharp: balance them, and check the centre hole fits the motor's prop adapter before flying.", true);
   if (s.esc.noBec && fcInfo?.bec5)
     add("ok", "Power", `The ${fcInfo.short} makes its own 5 V, so the ESCs don't need a BEC`, `Feed the flight controller battery voltage on VBAT${fcInfo.vin ? ` (it accepts ${fcInfo.vin[0]}–${fcInfo.vin[1]} V, so 6S at up to 25.2 V is fine)` : ""}. Its onboard ${fcInfo.bec5} BEC powers the receiver, GPS and buzzer${fcInfo.bec9 ? `, and the ${fcInfo.bec9} output can run a video transmitter later` : ""}.`, !fcInfo.vin);
   else if (s.esc.noBec)
@@ -576,14 +620,15 @@ function analyse(d) {
     add("ok", "Radio", "Nomad and XR3 use the same ExpressLRS radio chip", "Both use the Semtech LR1121, so they bind on 2.4 GHz or 900 MHz. Flash both to ExpressLRS 3.5.0 or newer.");
     add("info", "Radio", "XR3 uses one band at a time", "It has a single LR1121, so the Nomad's dual-band Gemini mode is not available. Use 900 MHz for range or 2.4 GHz for faster MAVLink. Full Gemini needs a dual-radio receiver such as the BetaFPV SuperX Nano (about $32).", true);
   }
-  if (link?.internal && rxK?.id === "xr3") {
-    add("ok", "Radio", `${radioK.short}'s built-in ExpressLRS and the XR3 bind on 2.4 GHz`, `The ${radioK.short}'s internal module is 2.4 GHz only. The XR3 is dual-band, so set it to 2.4 GHz to match. Flash both to ExpressLRS 3.5.0 or newer.`);
-    add("info", "Radio", "No 900 MHz without an external module", `2.4 GHz at up to 1 W (US listing) should cover a few kilometres in open fields, but it gets through trees and buildings less well than 900 MHz. If you need more range later, a Nomad slides into the ${radioK.short}'s ${radioK.bay} bay.`, true);
+  if (link?.internal && rxK?.esp) {
+    add(/2\.4/.test(rxK.bands) ? "ok" : "bad", "Radio", `${radioK.short}'s built-in ExpressLRS and the ${rxK.short} ${/2\.4/.test(rxK.bands) ? "bind on 2.4 GHz" : "use different bands"}`,
+      `The ${radioK.short}'s internal module is 2.4 GHz only (100 mW by default, per RadioMaster). ${/900/.test(rxK.bands) ? `The ${rxK.short} is dual-band, so set it to 2.4 GHz to match.` : `The ${rxK.short} is a 2.4 GHz receiver, so they match.`} Flash both to ExpressLRS 3.5.0 or newer.`);
+    add("info", "Radio", "No 900 MHz without an external module", `2.4 GHz at the Boxer's default 100 mW should cover a few kilometres in open fields, but it gets through trees and buildings less well than 900 MHz. If you need more range later, a Nomad slides into the ${radioK.short}'s ${radioK.bay} bay.`, true);
   }
   if (mavlink) {
-    const bothEsp = rxK?.id === "xr3" && link?.backpack;
+    const bothEsp = !!rxK?.esp && link?.backpack;
     add(bothEsp ? "ok" : link?.backpack === false ? "bad" : "warn", "Telemetry", bothEsp ? "MAVLink over ExpressLRS is supported at both ends" : "MAVLink to the laptop needs a WiFi Backpack",
-      link?.internal ? (link.backpack ? `RadioMaster lists a built-in ExpressLRS Backpack on the ${radioK.short}'s ELRS version, and the XR3 is ESP-based (ESP32-C3). Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.`
+      link?.internal ? (link.backpack ? `RadioMaster lists a built-in ExpressLRS Backpack on the ${radioK.short}'s ELRS version, and the ${rxK?.short || "receiver"} is ESP-based (${rxK?.esp || "check"}). Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.`
         : `I could not confirm the ${radioK.short} has a WiFi Backpack. Check for a Backpack WiFi option in its ExpressLRS script; without one, Mission Planner needs another telemetry link.`)
         : "MAVLink mode needs ESP-based hardware: the Nomad has an ESP32 with an ESP32-C3 Backpack, and the XR3 an ESP32-C3. Use ExpressLRS 3.5.0+ and Backpack 1.5.0+. No separate telemetry radio is needed.", link?.internal);
     if (link?.backpack) add("info", "Telemetry", "Connecting Mission Planner", `On the ${link.internal ? radioK.short : link.name}, open the ExpressLRS script and switch telemetry to WiFi. Join the Backpack's WiFi from the laptop, then connect Mission Planner by UDP (port 14550).`, true);
@@ -598,13 +643,17 @@ function analyse(d) {
     add("warn", "Radio", "Nomad needs its own 2S–4S LiPo above 250 mW", "Retailer listings say high output needs a battery on the Nomad's XT30 input. Add a small 2S–4S LiPo to the cart, or the link stays at 250 mW.", true);
   if (parts.motor?.specsFallback)
     add("info", "Sheet", "Motor and ESC specs come from your earlier Specs column", "The cart's Specs column was replaced by Quantity and Final cost, so the page keeps the motor listing's key specs (5010-14 360KV, 30 A ESC, 2–6S, 12–16\" props) from before. Put a specs note back in the sheet if the motor changes.");
-  if (has(P("buzzer")) && kbFor(P("buzzer").text)?.id !== "vifly")
+  if (kbFor(P("buzzer").text)?.selfPowered)
+    add("ok", "Extras", `${kbFor(P("buzzer").text).short} is a finder buzzer with its own battery`, "It keeps beeping (and flashing its LED) if the flight battery is knocked out in a crash, as well as giving ArduPilot's arming, GPS and low-battery tones.");
+  else if (has(P("buzzer")) && kbFor(P("buzzer").text)?.id !== "vifly")
     add("info", "Extras", "Your buzzer is a plain one", "That covers ArduPilot's arming, GPS and low-battery tones. It goes silent if the battery is knocked out in a crash; a self-powered one such as the Vifly Finder 2 keeps beeping. Check it is a 5 V active buzzer for the Kakute's buzzer pads.", true);
   for (const p of Object.values(parts)) if (p?.agrees)
     add("ok", "Telemetry", `Your "${p.label.trim()}" row says "${p.agrees}", which matches this plan`, "Telemetry and Mission Planner ride on the ExpressLRS link (MAVLink mode), so there is no separate telemetry radio to buy.");
   for (const p of Object.values(parts)) if (p?.assumed && !p.owned)
     add("info", "Sheet", `Assumed your "${p.label}" ($${fmt(p.cost, 2)}) is the ${kbFor(p.text)?.short || p.name}`, `The row says "${p.assumed}" with a price, so the page uses the part picked in chat. Type the real model name in the sheet if you bought something else, then press Update.`, true);
-  if (P("charger").status === "missing")
+  if (kbFor(P("charger").text)?.id === "c150")
+    add("info", "Power", "Recommended charger: HTRC C150 (about $42–58)", `Cheapest real 6S AC balance charger I found: 1–6S, 150 W (about 6 A on 6S, so roughly an hour for a 6200 mAh pack). It has 4 mm banana outputs with an XT60 lead and a JST-XH balance board.${s.battery.conn === "EC5" || s.battery2?.conn === "EC5" ? " It has no EC5 lead, so the HOOVO needs the same EC5-to-XT60 adapter as the power board." : ""}`, true);
+  else if (P("charger").status === "missing")
     add("warn", "Power", "Charger row is empty", `You need a ${s.battery.cells || 6}S balance charger for the flight battery, plus a LiPo-safe bag. Check your radio battery's charging too.`);
   for (const p of Object.values(parts)) if (p?.owned)
     add("ok", "Radio", `You already own the ${kbFor(p.text)?.short || p.name}`, `Nothing to buy for the radio. Check it is the ExpressLRS version (its ELRS menu appears under Tools), not the multi-protocol 4-in-1 version, since the built-in WiFi Backpack for Mission Planner comes with ELRS. ${p.placeholder ? `You can write "${kbFor(p.text)?.short || p.name}" in the "${p.label}" row instead of "${p.placeholder}".` : ""}`, true);
@@ -622,7 +671,11 @@ function analyse(d) {
   }
 
   // misc required items
-  if (has(P("pdb")) && !/\d+\s*A/i.test(P("pdb").text))
+  const pdbK = kbFor(P("pdb").text);
+  if (pdbK?.amps && top)
+    add(top.i <= pdbK.amps ? "ok" : top.i <= pdbK.burst ? "warn" : "bad", "Power", `Power board: ${pdbK.amps} A per ESC (${pdbK.burst} A for 10 s) vs ${fmt(top.i, 1)} A peak per motor`,
+      `It takes ${pdbK.cells[0]}–${pdbK.cells[1]}S, so your 6S packs are at the top of its range. Its 5 V/3 A BEC is a spare: the Kakute's own BEC already powers the receiver, GPS and buzzer. The XT60 comes loose and must be soldered on.`);
+  else if (has(P("pdb")) && !/\d+\s*A/i.test(P("pdb").text))
     add("warn", "Power", "Power distribution board has no rating listed", `Choose one rated for ≥ ${fmt(Math.ceil((iMaxTotal || 60) / 10) * 10, 0)} A${kbFor(parts.fc?.text)?.bec5 ? "" : " with a 5 V BEC output (your ESCs have none)"}.`);
   if (!has(P("buzzer"))) add("info", "Extras", "Buzzer not chosen", "A few grams; it gives arming tones and a lost-drone alarm. Strongly recommended for a large aircraft.");
   if (!has(P("antenna"))) add("info", "Extras", "Antennas row is empty", "Most receivers and GPS modules ship with antennas; confirm for the ones you pick.");
@@ -682,6 +735,51 @@ function analyse(d) {
     return { sys, plan: primary?.component || "–", planW: primary?.weight_g, planPrice: primary?.line_total, cart: cartText, state, url: p.url, decided: p.status === "decided" };
   });
 
+  /* --- connectors, from the product pages linked in the sheet --- */
+  const fcIsKakute = /kakute/i.test(P("fc").text || "");
+  const pdbConn = pdbK?.conn || null;
+  const bats = [["Primary battery", s.battery, P("battery")], ["Backup battery", s.battery2, P("battery2")]].filter(([, b, p]) => b && has(p));
+  for (const [label, b] of bats) {
+    if (b.conn && pdbConn && b.conn !== pdbConn)
+      add("bad", "Connectors", `${label} (${b.name}) has an ${b.conn} plug, but the power board takes ${pdbConn}`,
+        `They won't plug together. Easiest fix: an ${b.conn}-to-${pdbConn} adapter lead made for an ${b.conn} battery (about $5–10). It also lets the same pack use the charger's ${pdbConn} lead. Or solder an ${b.conn} onto the power board instead of the XT60 and give the other pack an adapter; ${b.conn} handles more current than XT60.`);
+    else if (b.conn && pdbConn) add("ok", "Connectors", `${label} (${b.name}) plugs straight into the power board (${b.conn})`, "");
+  }
+  if (s.battery2 && s.battery.conn && s.battery2.conn && s.battery.conn !== s.battery2.conn)
+    add("warn", "Connectors", `Your two flight packs use different plugs (${s.battery.conn} and ${s.battery2.conn})`, "Pick one plug for everything (power board, charger lead, both packs) so any pack fits any lead. Adapters work, but each one adds a joint that can work loose.");
+  if (s.battery2 && model.minutesBackup)
+    add("info", "Power", `Backup pack (${s.battery2.name}): about ${fmt(model.minutesBackup)} min hover`, `Primary (${s.battery.name}): about ${fmt(minutes)} min. Both estimated from your Motor sheet, with each pack's listed weight (${s.battery.weight ?? "?"} g and ${s.battery2.weight ?? "?"} g).`);
+  for (const [label, b] of bats) if (b.dims)
+    add("info", "Frame", `${label} is ${b.dims} and ${b.weight} g`, "Size the battery bay and strap for the larger pack, and keep it centred under the motors so the balance point doesn't shift between packs.");
+
+  const conns = [];
+  const conn = (part, has_, goes, sev, todo, verify) => conns.push({ part, has: has_, goes, sev, todo, verify });
+  for (const [label, b] of bats)
+    conn(`${label}: ${b.name}`, `${b.conn || "?"} power plug · ${b.balance || "balance lead"}`, `Power board ${pdbConn || "input"} · charger balance board`,
+      !pdbConn || !b.conn ? "info" : b.conn === pdbConn ? "ok" : "bad", b.conn && pdbConn && b.conn !== pdbConn ? `Needs an ${b.conn}-to-${pdbConn} adapter (or change the power board's plug).` : "Plugs in directly.");
+  if (has(P("pdb"))) conn(`Power board: ${pdbK?.short || "PDB"}`, pdbK ? `${pdbConn} input (loose, solder on) · 6 pairs of ESC pads · 5 V and 12 V pads` : "Not identified", "Battery · 4 ESCs · flight controller VBAT",
+    pdbK ? "ok" : "info", pdbK ? "Solder the XT60 with 12 AWG leads; tin the pads first." : "Add the product link to the sheet.");
+  if (kbFor(P("motor").text)?.id === "motor5010" || s.esc.found) {
+    conn("ESC power leads (×4)", "Bare red/black wires", "Power board ESC pads", "ok", "Solder; keep all four the same length.");
+    conn("ESC to motor (×4)", "3 female 3.5 mm bullets on each ESC; male bullets for the motors are in the box", "Motor's 3 phase wires", "ok", "Solder the included bullets to the motor wires and heat-shrink them. Swap any two to reverse a motor.");
+    conn("ESC signal (×4)", "2-wire servo plug: signal + ground (OPTO, no 5 V)", fcIsKakute ? "Kakute M1–M4 through its JST-SH 8-pin ESC port (cable included)" : "Flight controller motor outputs",
+      fcIsKakute ? "warn" : "info", fcIsKakute ? "Not plug-and-play: the Kakute's ESC port is made for a 4-in-1 ESC. Cut the included 8-pin cable and solder each ESC's signal to M1–M4 and its ground to GND. Check the pin order on Holybro's pinout." : "", fcIsKakute);
+  }
+  if (fcIsKakute) conn("Flight controller power", "VBAT and GND (on the 8-pin ESC cable or battery pads)", "Power board battery pads", "ok",
+    "Run VBAT/GND from the power board (the v1.5 takes 3S–8S). Its own 5 V/2 A BEC then powers the receiver, GPS and buzzer.", true);
+  if (has(P("rx"))) conn(`Receiver: ${rxK?.short || "RX"}`, rxK?.id === "rp3" ? "Solder pads 5V / GND / TX / RX, CRSF wire included · 2 UFL T-antennas" : "UART pads (5V / GND / TX / RX)",
+    `${shortName(P("fc"), "Flight controller")} UART pads (RX→TX, TX→RX) and 5 V`, "ok", "Solder. Use a free UART (not UART2, which is Bluetooth). Set its output to MAVLink, SERIALx_PROTOCOL = 2.", true);
+  if (has(P("gps"))) conn(`GPS: ${kbFor(P("gps").text)?.short || P("gps").name}`, kbFor(P("gps").text)?.conn ? `${kbFor(P("gps").text).conn} socket + solder pads (cable included): 5V, GND, TX, RX, SDA, SCL` : "UART + I²C",
+    `${shortName(P("fc"), "Flight controller")} UART (TX/RX) + I²C (SDA/SCL) + 5 V`, "ok", "Cut the included cable and solder to the pads; check the cable's colour order against SEQURE's diagram. SERIALx_PROTOCOL = 5.", true);
+  if (has(P("buzzer"))) conn(`Buzzer: ${kbFor(P("buzzer").text)?.short || "buzzer"}`, kbFor(P("buzzer").text)?.id === "yr50b" ? "3-pin 1.0 mm cable: red 5 V, black GND, yellow buzzer signal" : "2 wires (+ / −)",
+    `${shortName(P("fc"), "Flight controller")} 5 V, GND and buzzer (−) pads`, "ok", "Red to 5 V, black to GND, yellow to the buzzer-minus pad. Confirm colours with a multimeter.", true);
+  if (kbFor(P("prop").text)?.id === "tprop") conn("Props → motor", "Carbon prop with centre hole", "Motor's prop adapter (cone nut)", "warn", "Order the 1655 size; check the centre hole matches the adapter shaft.", true);
+  if (has(A_RADIO(parts))) conn(`Radio: ${shortName(radioP, "Radio")}`, "Internal ELRS 2.4 GHz + WiFi Backpack · USB-C (charges, 2 A max) · battery bay", "RP3 over the air · laptop over WiFi", "ok", "Make sure it is the ELRS version.", true);
+  if (has(P("radiobatt"))) conn(`Radio battery: ${kbFor(P("radiobatt").text)?.short || "pack"}`, kbFor(P("radiobatt").text)?.id === "rmbatt2s" ? "XT30 + JST-XH (2S)" : "?", `${shortName(radioP, "Radio")} battery bay`,
+    kbFor(P("radiobatt").text)?.id === "rmbatt2s" && radioK?.id === "boxer" ? "ok" : "info", "RadioMaster lists it for the Boxer. Charge it in the radio over USB-C.");
+  if (kbFor(P("charger").text)?.id === "c150") conn("Charger: HTRC C150", "4 mm banana output + leads (XT60 shown) · JST-XH balance board 2–6S", "Flight packs (and the radio pack)",
+    bats.some(([, b]) => b.conn === "EC5") ? "warn" : "ok", bats.some(([, b]) => b.conn === "EC5") ? "Charges the XT60 pack directly; the EC5 pack needs the EC5-to-XT60 adapter or an EC5 charge lead." : "", true);
+
   /* --- part-to-part compatibility --- */
   const nm = {
     batt: s.battery.mah ? `${s.battery.cells}S ${s.battery.mah} mAh ${s.battery.chem || ""}`.trim() : "Battery",
@@ -696,8 +794,9 @@ function analyse(d) {
   pair(nm.batt, nm.motor, "Battery voltage", mOk == null ? "warn" : mOk ? "ok" : "bad", mOk == null ? "Could not read both voltage ratings." : `${s.battery.cells}S is ${mOk ? "inside" : "outside"} the motor's ${s.motor.cellsMin}–${s.motor.cellsMax}S range.`);
   pair(nm.batt, nm.esc, "Battery voltage", eOk == null ? "warn" : eOk ? "ok" : "bad", eOk == null ? "Could not read both voltage ratings." : `${s.battery.cells}S is ${eOk ? "inside" : "outside"} the ESC's ${s.esc.cellsMin}–${s.esc.cellsMax}S input.`);
   const cr = iMaxTotal && CONN_A[s.battery.conn] ? iMaxTotal / CONN_A[s.battery.conn] : null;
-  pair(nm.batt, nm.pdb, `${s.battery.conn || "?"} · ${gauge(iMaxTotal || 60)} AWG`, cr == null ? "warn" : cr <= 0.8 ? "ok" : cr <= 1 ? "warn" : "bad",
-    cr == null ? "Connector rating unknown." : `Full throttle ≈ ${fmt(iMaxTotal)} A vs ≈ ${CONN_A[s.battery.conn]} A connector rating.${cr > 0.8 ? " Fine in bursts; an XT90 gives margin." : ""}`);
+  const plugClash = s.battery.conn && pdbConn && s.battery.conn !== pdbConn;
+  pair(nm.batt, nm.pdb, `${s.battery.conn || "?"}${plugClash ? ` → ${pdbConn}` : ""} · ${gauge(iMaxTotal || 60)} AWG`, plugClash ? "bad" : cr == null ? "warn" : cr <= 0.8 ? "ok" : cr <= 1 ? "warn" : "bad",
+    plugClash ? `The battery's ${s.battery.conn} plug doesn't fit the power board's ${pdbConn}. Use an ${s.battery.conn}-to-${pdbConn} adapter or change the board's plug.` : cr == null ? "Connector rating unknown." : `Full throttle ≈ ${fmt(iMaxTotal)} A vs ≈ ${CONN_A[s.battery.conn]} A connector rating.${cr > 0.8 ? " Fine in bursts; an XT90 gives margin." : ""}`);
   const fcK2 = kbFor(P("fc").text);
   const vinOk = fcK2?.vin && s.battery.cells ? s.battery.cells * 4.2 <= fcK2.vin[1] && s.battery.cells * 3.0 >= fcK2.vin[0] : null;
   pair(nm.pdb, nm.fc, fcK2?.bec5 ? "VBAT" : "VBAT + 5 V", vinOk === false ? "bad" : fcK2?.bec5 && vinOk ? "ok" : s.esc.noBec ? "warn" : "ok",
@@ -714,10 +813,10 @@ function analyse(d) {
   if (txK?.id === "nomad") pair("2S–4S LiPo", nm.tx, "XT30", "warn", "Needed above 250 mW output. Not in the cart yet.", true);
   const rxOk = has(P("rx")) && rxK?.kind !== "tx-module";
   const linkName = link?.internal ? `${nm.radio} (built-in ELRS)` : nm.tx;
-  const intXr3 = link?.internal && rxK?.id === "xr3";
+  const intXr3 = link?.internal && /2\.4/.test(rxK?.bands || "");
   pair(linkName, nm.rx, `ExpressLRS · ${link?.bands || "?"}`, !rxOk || !link ? "bad" : nomadXr3 || intXr3 ? "ok" : "info",
-    nomadXr3 ? "Both LR1121 on ExpressLRS 3.5.0+. The XR3 uses one band at a time (no Gemini)." : intXr3 ? "Both on ExpressLRS 3.5.0+. Set the dual-band XR3 to 2.4 GHz to match the radio." : "Both must run the same ExpressLRS version and band.");
-  pair(nm.rx, nm.fc, mavlink ? "UART · MAVLink2" : "UART · CRSF", !rxOk ? "bad" : "ok", mavlink ? "Receiver output set to MAVLink; SERIALx_PROTOCOL = 2. 5 V from the power board." : "SERIALx_PROTOCOL = 23 (RCIN).", true);
+    nomadXr3 ? "Both LR1121 on ExpressLRS 3.5.0+. The XR3 uses one band at a time (no Gemini)." : intXr3 ? `Both on ExpressLRS 3.5.0+ at 2.4 GHz${/900/.test(rxK.bands) ? `; set the dual-band ${rxK.short} to 2.4 GHz` : ""}.` : "Both must run the same ExpressLRS version and band.");
+  pair(nm.rx, nm.fc, mavlink ? "UART · MAVLink2" : "UART · CRSF", !rxOk ? "bad" : "ok", mavlink ? `Receiver output set to MAVLink; SERIALx_PROTOCOL = 2. 5 V from the ${kbFor(P("fc").text)?.bec5 ? "flight controller" : "power board"}.` : "SERIALx_PROTOCOL = 23 (RCIN).", true);
   if (mavlink) pair(link?.internal ? nm.radio : nm.tx, "Laptop (Mission Planner)", "WiFi Backpack · UDP", link?.backpack ? "ok" : link?.backpack === false ? "bad" : "warn",
     link?.backpack ? `The ${link.internal ? radioK.short + "'s built-in" : link.name + "'s"} Backpack bridges MAVLink to Mission Planner over WiFi (Backpack 1.5.0+).` : "Needs a transmitter with a WiFi Backpack; not confirmed for this radio.", link?.internal);
   const kakute = /kakute/i.test(P("fc").text || "");
@@ -734,7 +833,7 @@ function analyse(d) {
   const priced = (d.cart?.items || []).filter((i) => parseFloat(i.cost) > 0 && roleOf(i.component) !== "total");
   const sheetTotal = parseFloat((d.cart?.items || []).find((i) => roleOf(i.component) === "total")?.cost);
   const spend = { total: priced.reduce((t, i) => t + parseFloat(i.cost), 0), items: priced.map((i) => `${i.component.trim()} $${fmt(parseFloat(i.cost), 2)}`), sheetTotal, tracked: (d.cart?.items || []).some((i) => "cost" in i) };
-  return { spend, link, parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
+  return { conns, spend, link, parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
 }
 
 /* ---------- render ---------- */
@@ -861,7 +960,8 @@ function renderSchematic(A) {
   const labels = [
     `<text x="20" y="22" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">AIRCRAFT</text>`,
     `<text x="20" y="508" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">GROUND STATION</text>`,
-    label(176, 232, A.s.battery.conn || "XT60"),
+    label(176, 232, (() => { const pc = kbFor(P("pdb")?.text)?.conn, bc = A.s.battery.conn; return bc && pc && bc !== pc ? `${bc}≠${pc}` : bc || "XT60"; })(),
+      "start", (() => { const pc = kbFor(P("pdb")?.text)?.conn, bc = A.s.battery.conn; return bc && pc && bc !== pc ? "bad" : "muted"; })()),
     label(176, 258, `${gauge(A.model.iMaxTotal || 60)} AWG`),
     label(386, 224, "VBAT"),
     label(380, 366, `${gauge(A.model.top?.i || 15)} AWG to each ESC`),
@@ -944,6 +1044,13 @@ function renderSignals(A) {
       "Test this on the bench with props off: switch the radio off and watch the mode change in Mission Planner."]],
   ];
   $("signal-stories").innerHTML = stories.map(([h, steps], i) => `<div style="display:grid;gap:8px;align-content:start;min-width:0"><h3>${esc(h)}${i === 2 ? '<span class="verify">verify</span>' : ""}</h3><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></div>`).join("");
+}
+
+function renderConns(A) {
+  const bad = A.conns.filter((c) => c.sev === "bad").length, warn = A.conns.filter((c) => c.sev === "warn").length;
+  $("conns-sum").textContent = `${A.conns.length} connections · ${bad} won't fit · ${warn} need adapting`;
+  $("conns-table").innerHTML = `<thead><tr><th>Part</th><th>Connector (from its listing)</th><th>Goes to</th><th>Fit</th><th>What to do</th></tr></thead><tbody>${A.conns.map((c) =>
+    `<tr><td>${esc(c.part)}</td><td class="small">${esc(c.has)}</td><td class="small">${esc(c.goes)}</td><td>${pill(c.sev, { ok: "Fits", warn: "Adapt", bad: "Won't fit", info: "Check" }[c.sev])}</td><td class="small">${esc(c.todo)}${c.verify ? '<span class="verify">verify</span>' : ""}</td></tr>`).join("")}</tbody>`;
 }
 
 function renderPairs(A) {
@@ -1071,7 +1178,7 @@ function renderAll() {
   if (!DATA) return;
   const A = analyse(DATA);
   window.__A = A;
-  renderHeader(DATA); renderDecided(A); renderGauges(A); renderFindings(A); renderSchematic(A); renderSignals(A); renderPairs(A); renderModel(A); renderPlan(A); renderTools(A); renderNext(A);
+  renderHeader(DATA); renderDecided(A); renderGauges(A); renderFindings(A); renderConns(A); renderSchematic(A); renderSignals(A); renderPairs(A); renderModel(A); renderPlan(A); renderTools(A); renderNext(A);
 }
 
 /* ---------- events ---------- */
@@ -1089,7 +1196,7 @@ function rerenderModelOnly() {
   clearTimeout(modelTimer);
   modelTimer = setTimeout(() => {
     const A = analyse(DATA); window.__A = A;
-    renderGauges(A); renderFindings(A); renderSchematic(A); renderPairs(A); renderNext(A); renderChart(A);
+    renderGauges(A); renderFindings(A); renderConns(A); renderSchematic(A); renderPairs(A); renderNext(A); renderChart(A);
     const m = A.model;
     $("readout").innerHTML = [["All-up weight", `${fmt(m.auw)} g`], ["Hover thrust / motor", `${fmt(m.hoverPull)} g`], ["Hover current / motor", `${fmt(m.iHover, 1)} A`],
       ["Max current, all motors", `${fmt(m.iMaxTotal, 0)} A`], ["Hover throttle (thrust %)", `${fmt(m.hoverPct, 0)} %`], ["Est. hover time", `${fmt(m.minutes, 1)} min`]]

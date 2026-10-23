@@ -2,9 +2,9 @@
  "source": {
   "file": "Drone_Master_Build_Sheet.xlsx",
   "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
-  "modified": "Fri, 23 Oct 2026 13:43:24 GMT",
-  "sha256": "fe872936c533c113",
-  "synced_at": "2026-10-23T14:07:22+00:00",
+  "modified": "Fri, 23 Oct 2026 16:30:58 GMT",
+  "sha256": "5c1cb631aea2812e",
+  "synced_at": "2026-10-23T16:48:10+00:00",
   "sheets": [
    "cart",
    "Motor",
@@ -18,7 +18,8 @@
     "component": "Motor",
     "link": "Motor and ESP link",
     "qty": 1,
-    "cost": 106.06
+    "cost": 106.06,
+    "url": "https://www.aliexpress.us/item/3256808405937047.html?src=google&src=google&albch=shopping&acnt=708-803-3821&isdl=y&slnk=&plac=&mtctp=&albbt=Google_7_shopping&aff_platform=google&aff_short_key=UneMJZVf&gclsrc=aw.ds&albagn=888888&ds_e_adid=&ds_e_matchtype=&ds_e_device=c&ds_e_network=x&ds_e_product_group_id=&ds_e_product_id=en3256808405937047&ds_e_product_merchant_id=5624153765&ds_e_product_country=US&ds_e_product_language=en&ds_e_product_channel=online&ds_e_product_store_id=&ds_url_v=2&albcp=19108282527&albag=&isSmbAutoCall=false&needSmbHouyi=false&gad_source=1&gad_campaignid=19108284222&gbraid=0AAAAAD6I-hETkeParNqbCl1Zc9rj_ZBwW&gclid=CjwKCAjww-3VBhAcEiwAwUUIu-BRL86j-xFdgttb8dfLAg3X1OQ6ckLJS5dpHWwi9CmI2jam5XZ1XBoCBY4QAvD_BwE&gatewayAdapt=glo2usa"
    },
    {
     "component": "ESC",
@@ -30,25 +31,29 @@
     "component": "Propeller",
     "link": "Prop",
     "qty": 1,
-    "cost": 17.1
+    "cost": 17.1,
+    "url": "https://www.aliexpress.us/item/3256808508291370.html?src=google&src=google&albch=shopping&acnt=179-224-6891&isdl=y&slnk=&plac=&mtctp=&albbt=Google_7_shopping&aff_platform=google&aff_short_key=_oFgTQeV&gclsrc=aw.ds&albagn=888888&ds_e_adid=&ds_e_matchtype=&ds_e_device=c&ds_e_network=x&ds_e_product_group_id=&ds_e_product_id=en3256808508291370&ds_e_product_merchant_id=5566033220&ds_e_product_country=US&ds_e_product_language=en&ds_e_product_channel=online&ds_e_product_store_id=&ds_url_v=2&albcp=23114515373&albag=&isSmbAutoCall=false&needSmbHouyi=false&gad_source=4&gad_campaignid=23118775333&gbraid=0AAAABBR8xIdEJFtPJmV7Erp3vATOBuNwq&gclid=CjwKCAjwifjVBhBKEiwAYx4K9DWaBIiyg_9wcLm1hJeUfIuB5HZHiwe3J_h3bCEpgWE4PSLCwKuY4RoCrTgQAvD_BwE&gatewayAdapt=glo2usa"
    },
    {
     "component": "Buzzer",
     "link": "Buzzer",
     "qty": 1,
-    "cost": 4.91
+    "cost": 4.91,
+    "url": "https://www.aliexpress.us/item/3256809180946860.html?spm=a2g0o.cart.0.0.6db038daqdgjD3&mp=1&pdp_npi=6%40dis%21USD%21USD+16.15%21USD+4.91%21%21USD+4.91%21%21%21%40210328c017926106403814711e0ecb%2112000048900077231%21ct%21US%218235291513%21%211%210%21&_gl=1*1dg9pq7*_gcl_aw*R0NMLjE3OTI2MTA2MDkuQ2p3S0NBand3LTNWQmhBY0Vpd0F3VVVJdS1CUkw4NmoteEZkZ3R0YjhkZkxBZzNYMU9RNmNrTEpTNWRwSFd3aTlDbUkyamFtNVhaMVhCb0NCWTRRQXZEX0J3RQ..*_gcl_dc*R0NMLjE3OTI2MTA2MDkuQ2p3S0NBand3LTNWQmhBY0Vpd0F3VVVJdS1CUkw4NmoteEZkZ3R0YjhkZkxBZzNYMU9RNmNrTEpTNWRwSFd3aTlDbUkyamFtNVhaMVhCb0NCWTRRQXZEX0J3RQ..*_gcl_au*MTkxMjU0OTc3Ni4xNzkyNTA4Nzc2*_ga*MTUyMDEwNzAwNzIwNTEyNi4xNzkwOTY4MDEyMDIx*_ga_VED1YSGNC7*czE3OTI2MDc3NjYkbzUkZzEkdDE3OTI2MTA2MDkkajM5JGwwJGgw&gatewayAdapt=glo2usa"
    },
    {
     "component": "GPS",
     "link": "GPS with compass",
     "qty": 1,
-    "cost": 32.24
+    "cost": 32.24,
+    "url": "https://www.aliexpress.com/item/3256810183446273.html?spm=a2g0o.cart.0.0.760338dat84Rne&mp=1&pdp_npi=6%40dis%21USD%21USD%2024.09%21USD%2024.09%21%21USD%2024.09%21%21%21%402101c28d17926805845316561e0d81%2112000052161716015%21ct%21US%218235291513%21%211%210%21&_gl=1*h3h9r3*_gcl_aw*R0NMLjE3OTI2ODA0NTUuQ2p3S0NBand3LTNWQmhBY0Vpd0F3VVVJdS1CUkw4NmoteEZkZ3R0YjhkZkxBZzNYMU9RNmNrTEpTNWRwSFd3aTlDbUkyamFtNVhaMVhCb0NCWTRRQXZEX0J3RQ..*_gcl_dc*R0NMLjE3OTI2ODA0NTUuQ2p3S0NBand3LTNWQmhBY0Vpd0F3VVVJdS1CUkw4NmoteEZkZ3R0YjhkZkxBZzNYMU9RNmNrTEpTNWRwSFd3aTlDbUkyamFtNVhaMVhCb0NCWTRRQXZEX0J3RQ..*_gcl_au*MTkxMjU0OTc3Ni4xNzkyNTA4Nzc2*_ga*MTUyMDEwNzAwNzIwNTEyNi4xNzkwOTY4MDEyMDIx*_ga_VED1YSGNC7*czE3OTI2ODA0NTQkbzYkZzEkdDE3OTI2ODA1NTMkajYwJGwwJGgw"
    },
    {
     "component": "Flight Controller",
     "link": "FC",
     "qty": 1,
-    "cost": 103.85
+    "cost": 103.85,
+    "url": "https://flyfive33.com/products/holybrio-kakute-h7-v1-5-icm-42688-p?variant=53876169834790&country=US&currency=USD&utm_medium=product_sync&utm_source=google&utm_content=sag_organic&utm_campaign=sag_organic&tw_source=google&tw_adid=695598104597&tw_campaign=21147940956&tw_kwdid=pla-294682000766&gad_source=4&gad_campaignid=21147940956&gbraid=0AAAAAqqkawYq5PuI_HtEAKXFCUdZmhpfm&gclid=CjwKCAjwi-zWBhAdEiwAqlRf-P_s2wDLeCfF0ZQC3qxS-xxhVYmm4lYFgcfzYMXGQRcMpiHuXBx6yBoCHAsQAvD_BwE"
    },
    {
     "component": "Compass",
@@ -57,10 +62,18 @@
     "cost": null
    },
    {
-    "component": "Battery",
+    "component": "Battery (Primary)",
+    "link": "HOOVO Battry",
+    "qty": null,
+    "cost": null,
+    "url": "https://www.amazon.com/HOOVO-Softcase-Quadcopter-Airplane-Helicopter/dp/B0B1D9GQ5M/ref=sr_1_8?crid=1TIJ4S8QUXFYR&dib=eyJ2IjoiMSJ9.frPncbzliIeXtI2YbIwNR_S8NS9vqVw6-airVRpJif3RgkYJ_BZb5CgCCPUM8xlr5z5_LoLci0AoB7G4Z9xMiob-6HOxBGu8_5ucEy5ATicKr5tVCGui76_8-nnkPgnIbHjnZWbNdhALBhkuelw0DWzXZ82qtSQ_jZ6Y3XTMoqJftFRZHnZle5lLnvVzgrHt8JjAmCjZ5Bmn6ZJChN0V5SFjpEvg87ruz8SXO4xvbwRsCnrLrgvsOL6g549Zyfhp72vw1Q-2H6Y3ziJrZytybCtzqYq7_tO1rgU3t9Q6rik.IyuWONYvI0RZPIA9eOX11qqXOYqA91A7MueQ8UQRMwc&dib_tag=se&keywords=hoovo+6s&qid=1792772799&sprefix=hoovo+6s%2Caps%2C364&sr=8-8"
+   },
+   {
+    "component": "Battery (backup)",
     "link": "OVONIC 6S LiPo Battery 5000mAh 22.2V 130C RC Battery with XT60 Connector",
     "qty": 1,
-    "cost": null
+    "cost": null,
+    "url": "https://www.amazon.com/OVONIC-Battery-5000mAh-22-2V-Connector/dp/B0DNLWDTDT/ref=sr_1_4_sspa?crid=256M08BPMCLT5&dib=eyJ2IjoiMSJ9.8xb7gBsZ23ttvz25lQUdy9wkopJTKsIHXUAAPNxojLcPbfzsyM_fhR2ImgkTUUZIgQ8d3kUfcKD6aEzJiC8ROQaDPz8jXQRAeV_KEbxbQWPOluDyCeemTP6iSfmRrH9bNE0FzrUF3HbMn-OoRnyPUr8xqBwZMoX1ma6J5DY9GFnNFOxkwiA9mPISx7U79lneLPptrQ9Sn-JGrDRYkBhHTn_R6j_QlzA-H0BinoIE54US9GiCqTM74cZzdvaUHvXZnQQdvx9EV9V1dCoYNYXzX-rjHzF9l7nRr4BvP2hw-cQ.BFCwwD7pDc93biEJM3ZQ_c6TZex6RKV8WyrOfVgUVI8&dib_tag=se&keywords=6s+lipo+battery+xt60+connector+5200+mah&qid=1790961350&sprefix=6s+lipo+battery+xt60+connector+5200+mah%2Caps%2C122&sr=8-4-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1"
    },
    {
     "component": "Frame",
@@ -90,19 +103,22 @@
     "component": "RC Receiver rX",
     "link": "RX",
     "qty": 1,
-    "cost": 25.52
+    "cost": 25.52,
+    "url": "https://radiomasterrc.com/products/rp3-expresslrs-2-4ghz-nano-receiver"
    },
    {
     "component": "Radio",
     "link": "TX",
     "qty": 1,
-    "cost": 196.57
+    "cost": 196.57,
+    "url": "https://radiomasterrc.com/collections/boxer-radio/products/boxer-radio-controller-m2"
    },
    {
     "component": "Radio Battry",
     "link": "Small Battry",
     "qty": 1,
-    "cost": 38.28
+    "cost": 38.28,
+    "url": "https://radiomasterrc.com/products/2s-7-4v-6200mah-lipo-battery"
    },
    {
     "component": "Companion Computer",
@@ -114,7 +130,8 @@
     "component": "Power Distribution / BEC",
     "link": "pow distrubtion board",
     "qty": 1,
-    "cost": 20.74
+    "cost": 20.74,
+    "url": "https://www.amazon.com/30-5mm-Distribution-PDB-XT60-Quadcopter-QAV210/dp/B0FPQZ2598/ref=sr_1_5?crid=3CO9MYRMXGW09&dib=eyJ2IjoiMSJ9.SkpFYPwaSbe_ybb8ELGmxQY5eUXsahj9f6xjNRHYmhR1bjAxZETmVJL6d1KsRj2WZ3hklMjm7UYMNEp6VGmBy-fDYkLHVnowuMtmw15Y3lkRs9Vv_bKi7Z5ypKeX7-8Y63wG2BQc0CULS_PHD_GgTfG_VWC156FHWqVRcQodje0UxFbt4YzrdfTstwkezQo27Hq9IErL_mSButXKmzURuebu7bUKoGSJqpzA8bzZoetEUOQ-wDGSzqGdK-2DssfAt1-qadhdtMrr2baCDzAfwR1YuGjVFErlwVv1-E2FZZk.8CJrVSf0ESposhzS0vdu6IsuNfSnQcuEqy9zih4Dtw4&dib_tag=se&keywords=drone%2Bpower%2Bdistribution%2Bboard%2Bxt60%2B6s%2B8in%2Bto%2B1&nsdOptOutParam=true&qid=1790969081&sprefix=drone%2Bpower%2Bdistribution%2Bboard%2Bxt60%2B6s%2B8in%2Bto%2B1%2Caps%2C149&sr=8-5&th=1"
    },
    {
     "component": "Wiring & Connectors",
