@@ -118,7 +118,7 @@ def parse_cart(rows):
     h = find_header(rows, "component", "link")
     if h is None:
         return None
-    m = col_map(rows[h], {"component": ["component"], "link": ["link"], "specs": ["spec"]})
+    m = col_map(rows[h], {"component": ["component"], "link": ["link"], "specs": ["spec"], "qty": ["quantity", "qty"], "cost": ["cost", "price"]})
     items = []
     for r in rows[h + 1:]:
         if get(r, m, "component"):

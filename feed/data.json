@@ -1,10 +1,10 @@
 {
  "source": {
-  "file": "7inch_Drone_Master_Build_Sheet.xlsx",
+  "file": "Drone_Master_Build_Sheet.xlsx",
   "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
-  "modified": "Wed, 21 Oct 2026 19:09:43 GMT",
-  "sha256": "790128d31e998898",
-  "synced_at": "2026-10-21T19:11:23+00:00",
+  "modified": "Fri, 23 Oct 2026 11:37:47 GMT",
+  "sha256": "2ea8f8341a7b25a3",
+  "synced_at": "2026-10-23T11:41:18+00:00",
   "sheets": [
    "cart",
    "Motor",
@@ -17,97 +17,116 @@
    {
     "component": "Motor",
     "link": "Motor and ESP link",
-    "specs": "These are really great outrunners. We've tested this line and they work extremely well. \nThis is 5010-14 360KV   Brushless Motor\n\nFeatures:\n1.Machined aluminum front housing with four fan-style cooling holes that pump air through the motor while it runs.\n2.Rear threaded mounting holes with both 16 mm and 19mm hole spacings fit a variety of applications.\n3.Specially designed NdFeB magnets with high temperature rating for trouble-free operation.\n4.High Temperature 140 C (356 F) rated wire is used for winding the motors to minimize the risk of burning up the motor.\n5.High quality stator plates are epoxy coated on the inner surface to prevent winding shorts. 0.20mm stator plate id used on this motor 5010.\n6.High quality shielded and permanently lubricated ball bearings are used to support the motor shaft in all our motors.\n7.High temperature adhesives are used to secure the stator windings and prevent them from shifting and getting pinched or shorting out .\nMotor size: 50*10mm\nShaft size: 4mm\n\n\n\nWeight: 80g \nKV(rpm/v): 360/750\nBattery: 2-6Li-Po\nESC: 20-40A(Best configuration 30A)\nBest working with props of 12-16\"\n\nBrushess 30A ESC:\nThe newest Brushess 30A ESC brushless version, flight control and perfectly compatible engine\nBEC: NO\nInput: 2-6S lithium battery\nContinuous current: 30A\nInstantaneous current: 40A (10 seconds)\nBEC output: none\nPlug: 3.5mm banana plug\n1 Product Features\n1.1 Multi-rotor-specific program, the throttle response speed is extremely fast, surpassing all kinds of open source software;\n1.2 Firmware optimized for disc motors with excellent motor compatibility;\n1.3 Highly intelligent, self-adapting ability, only retaining the angle setting item (high advance/middle angle), the use is extremely simple;\n1.4 The throttle signal line is a twisted pair cable, which effectively reduces the crosstalk caused by the transmission of signals in the copper wire, making the flight more stable;\n1.5 Up to the throttle signal with a refresh rate up to 621Hz, compatible with various flight controls (Note: the throttle signals over 500Hz are non-standard throttle signals);\n1.6 Using MOSFET-specific driver chips, the performance and stability far exceed the drive circuit built with discrete components;\n1.7 Ultra-low internal resistance MOSFET with strong current resistance.\n\nPackage Includes: (as shown in the Main Photo)"
+    "qty": 1,
+    "cost": 106.06
    },
    {
     "component": "ESC",
     "link": null,
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Propeller",
-    "link": "https://www.aliexpress.us/item/3256808508291370.html?src=google&src=google&albch=shopping&acnt=179-224-6891&isdl=y&slnk=&plac=&mtctp=&albbt=Google_7_shopping&aff_platform=google&aff_short_key=_oFgTQeV&gclsrc=aw.ds&albagn=888888&ds_e_adid=&ds_e_matchtype=&ds_e_device=c&ds_e_network=x&ds_e_product_group_id=&ds_e_product_id=en3256808508291370&ds_e_product_merchant_id=5566033220&ds_e_product_country=US&ds_e_product_language=en&ds_e_product_channel=online&ds_e_product_store_id=&ds_url_v=2&albcp=23114515373&albag=&isSmbAutoCall=false&needSmbHouyi=false&gad_source=4&gad_campaignid=23118775333&gbraid=0AAAABBR8xIdEJFtPJmV7Erp3vATOBuNwq&gclid=CjwKCAjwifjVBhBKEiwAYx4K9DWaBIiyg_9wcLm1hJeUfIuB5HZHiwe3J_h3bCEpgWE4PSLCwKuY4RoCrTgQAvD_BwE&gatewayAdapt=glo2usa",
-    "specs": "g"
+    "link": "Prop",
+    "qty": 1,
+    "cost": 17.1
    },
    {
     "component": "Buzzer",
-    "link": null,
-    "specs": null
+    "link": "Buzzer",
+    "qty": 1,
+    "cost": 4.91
    },
    {
     "component": "GPS",
     "link": "GPS with compass",
-    "specs": null
+    "qty": 1,
+    "cost": 32.24
    },
    {
     "component": "Flight Controller",
-    "link": "https://holybro.com/collections/flight-controllers/products/kakute-h7-v2",
-    "specs": null
+    "link": "FC",
+    "qty": 1,
+    "cost": null
    },
    {
     "component": "Compass",
     "link": "Skip",
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Battery",
     "link": "OVONIC 6S LiPo Battery 5000mAh 22.2V 130C RC Battery with XT60 Connector",
-    "specs": null
+    "qty": 1,
+    "cost": null
    },
    {
     "component": "Frame",
     "link": "selfdesign",
-    "specs": null
+    "qty": "-",
+    "cost": null
    },
    {
     "component": "FPV Camera",
     "link": "skip ( until the drone start flying safely)",
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Perception Camera",
     "link": "skip ( until the drone start flying safely)",
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Video Transmitter (VTX)",
     "link": "skip ( until the drone start flying safely)",
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "RC Receiver rX",
     "link": "RX",
-    "specs": null
+    "qty": 1,
+    "cost": null
    },
    {
     "component": "Radio",
     "link": "TX",
-    "specs": null
+    "qty": 1,
+    "cost": null
    },
    {
     "component": "Telemetry  tx",
     "link": "No need",
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Companion Computer",
     "link": "skip for right now",
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Power Distribution / BEC",
     "link": "pow distrubtion board",
-    "specs": null
+    "qty": 1,
+    "cost": null
    },
    {
     "component": "Antennas",
     "link": null,
-    "specs": null
+    "qty": null,
+    "cost": null
    },
    {
     "component": "Wiring & Connectors",
     "link": null,
-    "specs": null
+    "qty": null,
+    "cost": null
    }
   ]
  },

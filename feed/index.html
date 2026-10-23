@@ -60,7 +60,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .status-line[data-tone="ok"] { color: var(--ok); }
 
 /* gauges */
-.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; }
 .gauge { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; border-top: 4px solid var(--line); }
 .gauge[data-sev="ok"] { border-top-color: var(--ok); }
 .gauge[data-sev="warn"] { border-top-color: var(--warn); }
@@ -248,6 +248,8 @@ const DECISIONS = {
   date: "2026-10-21",
   parts: {
     radio: { label: "Radio controller", name: "RadioMaster Boxer, ELRS version (radio)", specs: "EdgeTX handheld radio with built-in 2.4 GHz ExpressLRS (up to 1 W in the US per listings), a built-in WiFi Backpack and a standard JR module bay." },
+    fc: { label: "Flight Controller", name: "Holybro Kakute H7 v1.5 (flight controller)", specs: "Replaces the out-of-stock v2. ICM-42688-P IMU, SPA06 barometer, 6 UARTs, 7–42 V input, onboard 5 V/2 A and 9 V/3 A BECs (Holybro listing)." },
+    buzzer: { label: "Buzzer", name: "Vifly Finder 2 (lost-model buzzer)", specs: "Self-powered buzzer: keeps beeping after the main battery disconnects. 4.5–8.5 V input, up to 105 dB, about $17–19." },
     rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
     telem: { label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via the radio's WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
     gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
@@ -275,10 +277,17 @@ const KB = [
   { id: "xr3", re: /\bxr3\b/i, name: "RadioMaster XR3 (ELRS receiver)", short: "XR3", kind: "rx", notes: [] },
   { id: "m10", re: /micro\s*m10/i, name: "Holybro Micro M10 (GPS + compass)", short: "Micro M10", kind: "gps", compass: true, conn: "JST-GH", weight: 14, notes: [] },
   { id: "sequre-m10", re: /sequre[-\s]?m10|m10-25/i, name: "Sequre M10-252Q (GPS + QMC5883 compass)", short: "Sequre M10-252Q", kind: "gps", compass: true, conn: "SH1.0 6-pin", weight: 12, notes: [] },
-  { id: "kakute", re: /kakute[-\s]?h7[-\s]?v2/i, name: "Holybro Kakute H7 v2", short: "Kakute H7 v2", kind: "fc",
+  { id: "kakute15", re: /kakute[-\s]?h7[-\s]?v?1\.5|kakute-h7-v1-5|kakute-h7-v1-stacks/i, name: "Holybro Kakute H7 v1.5", short: "Kakute H7 v1.5", kind: "fc",
+    vin: [7, 42], bec5: "5 V / 2 A", bec9: "9 V / 3 A", weight: 8,
+    notes: [{ sev: "warn", t: "Kakute H7 v1.5 has a single IMU (ICM-42688-P)",
+      d: "Fine for first flights. For autonomy, redundancy is the main thing a Pixhawk-class board would add later." },
+      { sev: "info", t: "Flash ArduPilot's KakuteH7 firmware, latest stable", d: "One retailer lists ArduPilot support from 4.2.0, but the v1.5 uses a newer IMU (ICM-42688-P) and barometer (SPA06) than earlier Kakutes, so use a recent release. After flashing, check that Mission Planner shows the IMU and barometer.", verify: true },
+      { sev: "info", t: "UART2 is wired to the onboard Bluetooth", d: "Listings give 6 UARTs (1, 2, 3, 4, 6, 7) with UART2 used for Bluetooth. That leaves 1, 3, 4, 6 and 7: plenty for the receiver, the GPS and the companion computer later.", verify: true }] },
+  { id: "kakute", re: /kakute[-\s]?h7[-\s]?v2/i, name: "Holybro Kakute H7 v2", short: "Kakute H7 v2", kind: "fc", bec5: "5 V", bec9: "9 V",
     notes: [{ sev: "warn", t: "Kakute H7 v2 has a single IMU",
-      d: "Your master sheet already flags this as higher risk for autonomous flight. It is fine for first flights; the Pixhawk 6C (your plan's primary) adds a redundant IMU when you add autonomy." },
-    ], weight: 8 },
+      d: "Fine for first flights. For autonomy, redundancy is the main thing a Pixhawk-class board would add later." },
+      { sev: "warn", t: "Kakute H7 v2 is out of production", d: "Holybro has replaced it with the Kakute H7 v1.5, which mounts and wires the same way." }], weight: 8 },
+  { id: "vifly", re: /vifly|finder\s*2/i, name: "Vifly Finder 2 (lost-model buzzer)", short: "Vifly Finder 2", kind: "buzzer", notes: [] },
   { id: "pixhawk6c", re: /pixhawk\s*6c/i, name: "Holybro Pixhawk 6C", short: "Pixhawk 6C", kind: "fc", notes: [] },
   { id: "ovonic", re: /ovonic/i, name: "OVONIC 6S LiPo", short: "OVONIC 6S", kind: "battery", notes: [] },
 ];
@@ -316,8 +325,12 @@ function cartParts(d) {
   for (const it of d.cart?.items || []) {
     const role = roleOf(it.component);
     const text = it.link || "";
-    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : /^(rx|tx|tbd|todo|\?+|-+)$/i.test(text.trim()) ? "placeholder" : /^(no need|not needed|none|n\/?a)$/i.test(text.trim()) ? "notneeded" : "chosen";
-    parts[role] = { role, label: it.component, text, specs: it.specs || "", status, name: status === "chosen" ? niceName(text) : "", url: linkOf(text) };
+    const status = !text ? "missing" : /^skip/i.test(text) ? "deferred" : (/^(rx|tx|fc|esc|gps|props?|buzzer|motor|radio|tbd|todo|\?+|-+)$/i.test(text.trim()) || text.trim().toLowerCase() === String(it.component).trim().toLowerCase()) ? "placeholder" : /^(no need|not needed|none|n\/?a)$/i.test(text.trim()) ? "notneeded" : "chosen";
+    const cost = parseFloat(it.cost), qty = parseFloat(it.qty);
+    const bought = status === "placeholder" && cost > 0; // a bare name with a price is a part already bought
+    parts[role] = { role, label: it.component.trim(), text, specs: it.specs || (role === "motor" ? FALLBACK.motorSpecs : ""), specsFallback: !it.specs && role === "motor",
+      status: bought ? "chosen" : status, name: bought ? `${it.component.trim()} (bought, unnamed)` : status === "chosen" ? niceName(text) : "", url: linkOf(text),
+      cost: cost > 0 ? cost : null, qty: qty > 0 ? qty : null, bought };
   }
   // The sheet lists the TX module under "RC Receiver" and the radio under "Telemetry"; move them to their real roles.
   const kindOf = (p) => (p?.status === "chosen" ? kbFor(p.text)?.kind : null);
@@ -374,6 +387,8 @@ function parseMission(m) {
 // Last values seen on the "Master Build Sheet" tab (synced 2026-10-20), used if that tab is removed.
 const FALLBACK = {
   mission: "~30 min endurance · 200 g payload · Jetson Orin Nano autonomy",
+  // Key lines from the cart's former "Specs" column for the motor listing (motor + matching ESC), removed 2026-10-23.
+  motorSpecs: "This is 5010-14 360KV   Brushless Motor \nShaft size: 4mm \nWeight: 80g \nKV(rpm/v): 360/750 \nBattery: 2-6Li-Po \nESC: 20-40A(Best configuration 30A) \nBest working with props of 12-16\" \nBrushess 30A ESC: \nBEC: NO \nInput: 2-6S lithium battery \nContinuous current: 30A \nInstantaneous current: 40A (10 seconds) \nBEC output: none \nPlug: 3.5mm banana plug \n1.5 Up to the throttle signal with a refresh rate up to 621Hz, compatible with various flight controls (Note: the throttle signals over 500Hz are non-standard throttle signals);",
   companion: { component: "NVIDIA Jetson Orin Nano 8GB Dev Kit", weight_g: 180, specs: "~12W active", compat: "USB-UART adapter to the flight controller's TELEM UART (not GPIO UART). CSI camera ✓." },
   perception: { component: "Arducam IMX477 CSI (Jetson)", weight_g: 30, compat: "Jetson Orin Nano dev-kit CSI ✓ (native driver, JetPack-version specific). 22-pin FFC incl." },
 };
@@ -482,7 +497,7 @@ function analyse(d) {
   }
   if (has(P("prop")))
     add("warn", "Props", "Confirm the prop listing matches your chosen size and the motor's prop mount",
-      `The prop row links to ${P("prop").name || "a listing"} without a size. Check it is ${prop} and that its hub fits the ${s.motor.model || "motor"}'s prop adapter${s.motor.shaft ? ` (${s.motor.shaft} mm shaft)` : ""}. Buy CW and CCW pairs, plus spares.`);
+      `${P("prop").bought ? "Your prop row has a price but no model or size." : `The prop row links to ${P("prop").name || "a listing"} without a size.`} Check it is ${prop} and that its hub fits the ${s.motor.model || "motor"}'s prop adapter${s.motor.shaft ? ` (${s.motor.shaft} mm shaft)` : ""}. Buy CW and CCW pairs, plus spares.`);
 
   // ESC
   if (!s.esc.found && !has(P("esc")))
@@ -495,7 +510,10 @@ function analyse(d) {
   }
   if (P("esc").status === "missing" && s.esc.found)
     add("info", "ESC", "ESC row is empty, but the motor listing includes a 30 A ESC", "Make sure you are ordering 4 ESCs from that listing (one per motor), and fill in the ESC row so the sheet stays accurate.");
-  if (s.esc.noBec)
+  const fcInfo = kbFor(parts.fc?.text);
+  if (s.esc.noBec && fcInfo?.bec5)
+    add("ok", "Power", `The ${fcInfo.short} makes its own 5 V, so the ESCs don't need a BEC`, `Feed the flight controller battery voltage on VBAT${fcInfo.vin ? ` (it accepts ${fcInfo.vin[0]}–${fcInfo.vin[1]} V, so 6S at up to 25.2 V is fine)` : ""}. Its onboard ${fcInfo.bec5} BEC powers the receiver, GPS and buzzer${fcInfo.bec9 ? `, and the ${fcInfo.bec9} output can run a video transmitter later` : ""}.`, !fcInfo.vin);
+  else if (s.esc.noBec)
     add("warn", "ESC", "ESCs have no BEC", "Nothing on the ESCs makes 5 V. Power the flight controller from the battery through the power distribution board, and use a board or BEC with a 5 V output for the receiver, GPS and buzzer. Check the flight controller's input voltage range covers 6S.", true);
   if (s.esc.found && !s.esc.dshot && s.esc.hz)
     add("info", "ESC", `ESC accepts PWM-class throttle signals (up to ${s.esc.hz} Hz); no DShot or telemetry listed`,
@@ -572,6 +590,10 @@ function analyse(d) {
     add("info", "Radio", "The Nomad sticks out from the back of the Pocket", "It is a larger module than the Pocket's bay is usually used with. It works, but expect a bulkier, back-heavy setup; a lanyard or neck strap helps.", true);
   if (txK?.id === "nomad")
     add("warn", "Radio", "Nomad needs its own 2S–4S LiPo above 250 mW", "Retailer listings say high output needs a battery on the Nomad's XT30 input. Add a small 2S–4S LiPo to the cart, or the link stays at 250 mW.", true);
+  if (parts.motor?.specsFallback)
+    add("info", "Sheet", "Motor and ESC specs come from your earlier Specs column", "The cart's Specs column was replaced by Quantity and Final cost, so the page keeps the motor listing's key specs (5010-14 360KV, 30 A ESC, 2–6S, 12–16\" props) from before. Put a specs note back in the sheet if the motor changes.");
+  if (has(P("buzzer")) && kbFor(P("buzzer").text)?.id !== "vifly")
+    add("info", "Extras", "Your buzzer is a plain one", "That covers ArduPilot's arming, GPS and low-battery tones. It goes silent if the battery is knocked out in a crash; a self-powered one such as the Vifly Finder 2 keeps beeping. Check it is a 5 V active buzzer for the Kakute's buzzer pads.", true);
   for (const p of Object.values(parts)) if (p?.agrees)
     add("ok", "Telemetry", `Your "${p.label.trim()}" row says "${p.agrees}", which matches this plan`, "Telemetry and Mission Planner ride on the ExpressLRS link (MAVLink mode), so there is no separate telemetry radio to buy.");
   for (const p of Object.values(parts)) if (p?.status === "decided" && !p.agrees)
@@ -587,7 +609,7 @@ function analyse(d) {
 
   // misc required items
   if (has(P("pdb")) && !/\d+\s*A/i.test(P("pdb").text))
-    add("warn", "Power", "Power distribution board has no rating listed", `Choose one rated for ≥ ${fmt(Math.ceil((iMaxTotal || 60) / 10) * 10, 0)} A with a 5 V BEC output (your ESCs have none).`);
+    add("warn", "Power", "Power distribution board has no rating listed", `Choose one rated for ≥ ${fmt(Math.ceil((iMaxTotal || 60) / 10) * 10, 0)} A${kbFor(parts.fc?.text)?.bec5 ? "" : " with a 5 V BEC output (your ESCs have none)"}.`);
   if (!has(P("buzzer"))) add("info", "Extras", "Buzzer not chosen", "A few grams; it gives arming tones and a lost-drone alarm. Strongly recommended for a large aircraft.");
   if (!has(P("antenna"))) add("info", "Extras", "Antennas row is empty", "Most receivers and GPS modules ship with antennas; confirm for the ones you pick.");
   if (!has(P("wiring"))) add("info", "Extras", "Wiring & connectors row is empty", "See the wiring table and the tools list below for what to buy.");
@@ -605,7 +627,7 @@ function analyse(d) {
     { from: "Battery", to: "Power board", kind: "pwr", spec: `${s.battery.conn || "XT60"} · ${gauge(iMaxTotal || 60)} AWG`, note: "Fit a smoke stopper or fuse for the very first power-up." },
     { from: "Power board", to: "ESC 1–4 (power)", kind: "pwr", spec: `${gauge(perMotorI)} AWG each`, note: "Solder to the board pads; keep the leads short and equal." },
     { from: "ESC 1–4", to: "Motor 1–4", kind: "pwr", spec: s.esc.bullet ? `${s.esc.bullet} mm bullets` : "3 phase wires", note: "Swap any two phase wires to reverse a motor's spin direction." },
-    { from: "Power board", to: "Flight controller", kind: "pwr", spec: "VBAT + GND", note: s.esc.noBec ? "ESCs have no BEC, so the FC must be fed here. Confirm its input range covers 6S." : "", verify: true },
+    { from: "Power board", to: "Flight controller", kind: "pwr", spec: "VBAT + GND", note: s.esc.noBec ? (kbFor(parts.fc?.text)?.bec5 ? `Battery voltage only. The flight controller's own ${kbFor(parts.fc.text).bec5} BEC makes 5 V for the receiver, GPS and buzzer.` : "ESCs have no BEC, so the FC must be fed here. Confirm its input range covers 6S.") : "", verify: !kbFor(parts.fc?.text)?.vin },
     { from: "Flight controller", to: "ESC 1–4 (signal)", kind: "sig", spec: "Signal + GND per ESC", note: "Wire M1–M4 to the motor order in the ArduPilot quad-X diagram." },
     { from: `Receiver${has(P("rx")) && rxK?.short ? ` (${rxK.short})` : ""}`, to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND",
       note: mavlink ? "Set the receiver's output to MAVLink, and that port's SERIALx_PROTOCOL to 2 (MAVLink2). Baud rate per the ExpressLRS MAVLink guide." : "ExpressLRS uses CRSF. In ArduPilot set that port's SERIALx_PROTOCOL to 23 (RCIN).",
@@ -662,7 +684,11 @@ function analyse(d) {
   const cr = iMaxTotal && CONN_A[s.battery.conn] ? iMaxTotal / CONN_A[s.battery.conn] : null;
   pair(nm.batt, nm.pdb, `${s.battery.conn || "?"} · ${gauge(iMaxTotal || 60)} AWG`, cr == null ? "warn" : cr <= 0.8 ? "ok" : cr <= 1 ? "warn" : "bad",
     cr == null ? "Connector rating unknown." : `Full throttle ≈ ${fmt(iMaxTotal)} A vs ≈ ${CONN_A[s.battery.conn]} A connector rating.${cr > 0.8 ? " Fine in bursts; an XT90 gives margin." : ""}`);
-  pair(nm.pdb, nm.fc, "VBAT + 5 V", s.esc.noBec ? "warn" : "ok", s.esc.noBec ? "The ESCs have no BEC, so the board must supply 5 V for the receiver, GPS and buzzer. Confirm the flight controller accepts 6S on VBAT." : "", true);
+  const fcK2 = kbFor(P("fc").text);
+  const vinOk = fcK2?.vin && s.battery.cells ? s.battery.cells * 4.2 <= fcK2.vin[1] && s.battery.cells * 3.0 >= fcK2.vin[0] : null;
+  pair(nm.pdb, nm.fc, fcK2?.bec5 ? "VBAT" : "VBAT + 5 V", vinOk === false ? "bad" : fcK2?.bec5 && vinOk ? "ok" : s.esc.noBec ? "warn" : "ok",
+    fcK2?.bec5 ? `${fcK2.vin ? `${s.battery.cells}S (up to ${fmt(s.battery.cells * 4.2, 1)} V) is inside the ${fcK2.vin[0]}–${fcK2.vin[1]} V input. ` : ""}The flight controller's ${fcK2.bec5} BEC supplies the 5 V parts, so the power board only passes battery voltage.`
+      : s.esc.noBec ? "The ESCs have no BEC, so the board must supply 5 V for the receiver, GPS and buzzer. Confirm the flight controller accepts 6S on VBAT." : "", !fcK2?.vin);
   const head = s.esc.cont && top ? s.esc.cont / top.i : null;
   pair(nm.esc, nm.motor, `${s.esc.bullet || "3.5"} mm bullets`, head == null ? "warn" : head >= 1.3 ? "ok" : head >= 1.05 ? "warn" : "bad", head ? `${s.esc.cont} A rating vs ${fmt(top.i, 1)} A peak per motor (${fmt(head, 1)}× headroom).` : "ESC rating unknown.");
   pair(nm.fc, nm.esc, "PWM signal ×4", s.esc.found && !s.esc.dshot ? "info" : "ok", s.esc.found && !s.esc.dshot ? `The ESC listing quotes PWM up to ${s.esc.hz ?? "?"} Hz and no DShot: use normal PWM or OneShot125 and calibrate the ESCs.` : "", true);
@@ -691,7 +717,9 @@ function analyse(d) {
   if (minutes && mission.minutes) pair(nm.batt, "Mission goal", "Flight time", minutes >= mission.minutes ? "ok" : minutes >= mission.minutes * 0.8 ? "warn" : "bad", `Model says about ${fmt(minutes)} min hover vs your ${mission.minutes} min goal.`);
 
   const applied = Object.values(parts).filter((p) => p?.status === "decided" && !p.agrees);
-  return { link, parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
+  const priced = (d.cart?.items || []).filter((i) => parseFloat(i.cost) > 0);
+  const spend = { total: priced.reduce((t, i) => t + parseFloat(i.cost), 0), items: priced.map((i) => `${i.component.trim()} $${fmt(parseFloat(i.cost), 2)}`), tracked: (d.cart?.items || []).some((i) => "cost" in i) };
+  return { spend, link, parts, s, mission, model, findings, wires, ground, phase2, plan, pairs, applied, mavlink, rxK, txK, radioK, tK };
 }
 
 /* ---------- render ---------- */
@@ -719,6 +747,7 @@ function renderGauges(A) {
     vs: `Adds ${fmt(m.addG)} g and ${m.jetW} W (${m.jet.component.replace(/NVIDIA\s+/i, "").split(" Dev")[0]}${m.cam ? " + camera" : ""})` });
   g.push({ sev: m.tw == null ? "warn" : m.tw >= 2 ? "ok" : m.tw >= 1.6 ? "warn" : "bad", label: "Thrust-to-weight", val: fmt(m.tw, 1), unit: ": 1", vs: "2 : 1 or more recommended" });
   g.push({ sev: goal.auwKg ? (m.auw / 1000 <= goal.auwKg ? "ok" : "warn") : "info", label: "All-up weight (est.)", val: fmt(m.auw / 1000, 2), unit: "kg", vs: goal.auwKg ? `Master plan limit ${goal.auwKg} kg (7-inch plan)` : "Estimate; weigh the real build to confirm" });
+  if (A.spend.tracked) g.push({ sev: "info", label: "Spent so far", val: `$${fmt(A.spend.total, 2)}`, unit: "", vs: A.spend.items.join(" · ") || "No costs entered yet" });
   const first = ["motor", "esc", "prop", "fc", "battery", "frame", "rx", "pdb", "gps"];
   const ready = first.filter((r) => has(A.parts[r]) && !(r === "rx" && A.rxK?.kind === "tx-module") || (r === "esc" && A.s.esc.found));
   g.push({ sev: ready.length === first.length ? "ok" : ready.length >= first.length - 2 ? "warn" : "bad", label: "Parts for autonomous flight", val: `${ready.length}`, unit: `/ ${first.length}`,
@@ -764,8 +793,8 @@ function renderSchematic(A) {
   const rxBad = A.rxK?.kind === "tx-module";
   const N = {
     batt: { x: 20, y: 210, w: 150, h: 60, t: "Flight battery", s: A.s.battery.mah ? `${A.s.battery.cells}S ${A.s.battery.mah} mAh` : "–", st: partState(P("battery")) },
-    pdb: { x: 230, y: 210, w: 150, h: 60, t: "Power board", s: "PDB + 5 V BEC", st: partState(P("pdb")) },
-    fc: { x: 450, y: 196, w: 170, h: 92, t: "Flight controller", s: shortName(P("fc"), "Not chosen"), s2: "ArduPilot", st: partState(P("fc")) },
+    pdb: { x: 230, y: 210, w: 150, h: 60, t: "Power board", s: kbFor(P("fc")?.text)?.bec5 ? "Battery voltage only" : "PDB + 5 V BEC", st: partState(P("pdb")) },
+    fc: { x: 450, y: 196, w: 170, h: 92, t: "Flight controller", s: shortName(P("fc"), "Not chosen"), s2: kbFor(P("fc")?.text)?.bec5 ? `ArduPilot · ${kbFor(P("fc").text).bec5.split(" /")[0]} BEC` : "ArduPilot", st: partState(P("fc")) },
     rx: { x: 450, y: 40, w: 170, h: 60, t: "Receiver", s: rxBad ? "Need an ELRS RX" : shortName(P("rx"), "Not chosen"), s2: A.mavlink ? "ELRS · MAVLink mode" : "", st: partState(P("rx"), rxBad) },
     gps: { x: 650, y: 40, w: 170, h: 60, t: "GPS + compass", s: shortName(P("gps"), "Not chosen"), st: partState(P("gps")) },
     buz: { x: 240, y: 40, w: 150, h: 60, t: "Buzzer", s: has(P("buzzer")) ? "" : "Not chosen", st: partState(P("buzzer")) },
