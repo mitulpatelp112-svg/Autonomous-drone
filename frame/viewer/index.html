@@ -103,6 +103,11 @@ dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-
         <span class="eyebrow">Whole frame</span>
         <dl class="dims" id="totals"></dl>
       </section>
+      <section>
+        <span class="eyebrow">Clearance check · tool paths, cables, straps</span>
+        <dl class="dims" id="clearance"></dl>
+        <p class="note">Every screw gets a straight 7 mm tool path (150 mm long) from its head; every cable and strap gets a box along its route. Each is tested against all parts, the battery, ESCs, motors and props.</p>
+      </section>
     </aside>
   </div>
 </div>
@@ -121,25 +126,26 @@ const SPECS = {
   body: { title: "Central body", qty: 1, groups: [
     ["Envelope", [["Footprint (with arm sockets)", "198.6 × 198.6"], ["Height", "40.5"], ["Socket tip radius", "133"]]],
     ["Electronics bay", [["Inside size", "90 × 90"], ["Wall", "3"], ["Floor", "5"], ["Stack pattern (Kakute + power board)", "30.5 × 30.5"], ["Standoff height", "8"]]],
-    ["Arm sockets (×4)", [["Tunnel", "28.5 W × 28.5 H"], ["Tunnel depth", "43"], ["Roof (holds inserts)", "7"], ["Arm-to-body bolts", "2 × M3 × 40"], ["Wire hole to bay", "Ø12"]]],
-    ["Other features", [["Battery strap slots (×4)", "22 × 3.5"], ["Battery lead slot", "16 × 10"], ["GPS mast socket", "Ø12.3 × 25 deep"], ["Antenna holes (front)", "Ø4.4 × 2"], ["USB window (side)", "16 × 10"]]],
+    ["Arm sockets (×4)", [["Tunnel", "28.5 W × 28.5 H"], ["Tunnel depth", "43"], ["Roof (holds inserts)", "7"], ["Arm-to-body bolts", "2 × M3 × 40, 9.5 off centre (either side of the wire channel)"], ["Wire opening to bay", "18 W, open from 25 mm up"]]],
+    ["Other features", [["Battery strap slots (×4)", "22 × 3.5 at x ±33, y ±36"], ["Battery lead slot", "24 × 12"], ["Antenna holes (front)", "Ø4.4 × 2"], ["USB window (side)", "16 × 10"]]],
+    ["GPS mast boss (outside rear wall)", [["Boss", "Ø26, axis 60 behind centre"], ["Socket", "Ø12.3 × 28 deep"], ["Cable passage to bay", "9 W × 7.5 H"], ["Lock screw", "M3 insert, from the back"]]],
     ["Hardware", [["M3 heat-set inserts", "13 (8 roof, 4 stack, 1 mast)"], ["Insert hole", "Ø4.2 × 6"]]],
   ], print: "Floor down, as modelled. Tunnel roofs bridge 28.5 mm; no supports." },
   arm: { title: "Arm", qty: 4, groups: [
     ["Envelope", [["Root to motor centre", "250"], ["Overall length", "273"], ["Width", "28"], ["Height (root → tip)", "28 → 20"]]],
     ["Motor pad", [["Diameter", "Ø46"], ["Thickness", "6"], ["Screw slots (8)", "r 7.5–15.5, 3.4 wide"], ["Centre hole", "Ø12"], ["Fits", "5010 · 16 mm / 19 mm patterns"]]],
-    ["ESC mount", [["Recess", "52 × 26 × 1.5"], ["Recess centre radius", "250 from frame centre"], ["Zip-tie slots (2)", "4 × 2.4"], ["Wire channel", "10 W × 6 D"]]],
-    ["Joints", [["Body bolts (from root)", "12 and 30"], ["Leg inserts (radius)", "173 and 197"], ["Lightening slots", "3 spans through the web"]]],
-    ["Load check (full thrust 17.1 N)", [["Moment at body exit", "3.53 N·m"], ["Peak stress", "2.1 MPa (limit 15)"], ["Tip deflection hover / max", "0.44 / 1.33"], ["First bending frequency", "~49 Hz"]]],
+    ["ESC mount", [["Recess", "52 × 26 × 1.5"], ["Recess centre radius", "250 from frame centre"], ["Zip-tie slots (2)", "4 × 2.4"], ["Wire channel", "12 W × 7 D"]]],
+    ["Joints", [["Body bolts (x from root, y)", "(12, +9.5) and (30, −9.5)"], ["Leg inserts (radius)", "170 and 200"], ["Pocket under motor pad", "Ø38 × 14"], ["Lightening slots", "3 spans through the web"]]],
+    ["Load check (full thrust 17.1 N)", [["Moment at body exit", "3.53 N·m"], ["Peak stress", "2.2 MPa (limit 15)"], ["Tip deflection hover / max", "0.45 / 1.37"], ["First bending frequency", "~48 Hz"]]],
   ], print: "Flat side down, diagonally on the bed (209.7 mm footprint). 4 walls." },
   leg: { title: "Landing leg", qty: 4, groups: [
-    ["Envelope", [["Height", "110"], ["Splay outward", "12°"], ["Strut section", "14 × 16"], ["Foot length", "36"], ["Mount pad", "44 × 16 × 6"]]],
-    ["Mounting", [["Bolts", "2 × M3 × 8 into arm inserts"], ["Bolt spacing", "24"], ["Counterbore", "Ø6.4 × 3"], ["Mount radius", "185 from frame centre"]]],
-    ["Load check (4 g landing on 2 legs)", [["Force per leg", "45 N"], ["Strut stress", "4.7 MPa (limit 15)"], ["Pull on the outer bolt", "73 N"]]],
+    ["Envelope", [["Height", "110"], ["Strut", "vertical, 14 × 16, gusset under the pad"], ["Foot", "20 × 32 × 4"], ["Mount pad", "46 × 16 × 6"]]],
+    ["Mounting", [["Bolts", "2 × M3 × 8 into arm inserts, straight up from below"], ["Bolt spacing", "30 (outside the strut and foot)"], ["Counterbore", "Ø6.4 × 3"], ["Mount radius", "185 from frame centre"]]],
+    ["Load check (4 g landing on 2 legs)", [["Force per leg", "45 N"], ["Strut stress", "3.0 MPa (limit 15)"], ["Worst bolt pull (sideways skid)", "92 N (limit ~167)"]]],
   ], print: "On its side (the 16 mm face)." },
   mast: { title: "GPS mast", qty: 1, groups: [
-    ["Envelope", [["Tube", "Ø12 × 100"], ["Inserted into body", "20"], ["GPS plate", "30 × 30 × 3"], ["Cable bore", "Ø7"]]],
-    ["Fits", [["SEQURE M10-252Q", "25 × 25 (M10-182Q: 18 × 18)"], ["Lock screw", "M3 from the side, on a flat"]]],
+    ["Envelope", [["Tube", "Ø12 × 100"], ["Inserted into body", "20"], ["GPS plate", "30 × 30 × 3"], ["Cable bore", "Ø8 (JST-SH plug passes)"]]],
+    ["Fits", [["SEQURE M10-252Q", "25 × 25 (M10-182Q: 18 × 18)"], ["Lock screw", "M3 from the back, on a flat"]]],
   ], print: "Upside down: GPS plate on the bed, tube standing up." },
 };
 const COLORS = { body: "--c-body", arm: "--c-arm", leg: "--c-leg", mast: "--c-leg" };
@@ -259,6 +265,10 @@ function buildTotals() {
   $("totals").innerHTML = [["Wheelbase (motor to motor)", "680 mm"], ["Prop size", "16 × 5.5 in"], ["Prop tip gap", `${DATA.report.prop_tip_gap_mm} mm`],
     ["Printed mass (est.)", `${Math.round(mass)} g`], ["Bed needed", "220 × 220 mm"], ["Material", "PETG, 4 walls"]]
     .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  const c = DATA.clearance;
+  if (c) $("clearance").innerHTML = c.groups.map((g) => `<dt>${esc(g.name)}</dt><dd>${g.blocked ? `${g.blocked} of ${g.paths} blocked` : `${g.paths} clear`}</dd>`).join("")
+    + `<div class="kv-group">Thinnest walls (mm)</div>` + c.walls.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")
+    + `<dt>Ground clearance under battery</dt><dd>${c.ground_mm}</dd>`;
 }
 
 function worldBox(p) { return new THREE.Box3().setFromObject(p.mesh); }
@@ -306,6 +316,7 @@ function regionOf(p, local) {
   }
   if (p.geo === "body") {
     const r = Math.hypot(local.x, local.y);
+    if (local.x < -(48 - 1) && Math.abs(local.y) < 14) return "GPS mast boss";
     return r < 45 ? "electronics bay" : r < 92 ? "socket boss" : "arm socket";
   }
   if (p.geo === "leg") return local.z > -10 ? "mount pad" : local.z < -100 ? "foot" : "strut";

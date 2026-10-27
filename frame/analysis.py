@@ -149,12 +149,15 @@ allow_z = PETG_UTS_Z / SAFETY_FACTOR
 # --- Landing on the legs --------------------------------------------------------
 LAND_G = 4.0                                               # hard landing, all weight on 2 legs
 F_leg = W_N * LAND_G / 2
-foot_x = math.tan(math.radians(LEG_SPLAY_DEG)) * (LEG_H - 6)
-F_lat = 0.3 * F_leg
-M_leg = F_leg * foot_x + F_lat * LEG_H
-Z_leg = LEG_WIDTH * LEG_T**2 / 6
-sigma_leg = M_leg / Z_leg
-bolt_T = M_leg / (LEG_BOLT_SPACING / 2 + 22)               # far bolt, pivot at pad edge
+F_lat = 0.3 * F_leg                                        # sideways skid at touchdown (friction 0.3)
+M_leg = F_lat * LEG_H                                      # straight strut: only the skid bends it
+Z_leg = min(LEG_WIDTH * LEG_T**2, LEG_T * LEG_WIDTH**2) / 6   # weaker of the two directions
+sigma_leg = M_leg / Z_leg + F_leg / (LEG_T * LEG_WIDTH)
+# Skid along the arm: pad tips about its edge, far bolt takes it. Skid across the arm: pad tips
+# about its 16 mm side edge, both bolts share it at 8 mm leverage.
+bolt_T_along = M_leg * (LEG_PAD_L / 2 + LEG_BOLT_SPACING / 2) / ((LEG_PAD_L / 2 + LEG_BOLT_SPACING / 2) ** 2 + (LEG_PAD_L / 2 - LEG_BOLT_SPACING / 2) ** 2)
+bolt_T_across = M_leg / (2 * LEG_WIDTH / 2)
+bolt_T = max(bolt_T_along, bolt_T_across)
 INSERT_PULLOUT = 500.0                                     # N, M3 insert in PETG (rough; varies with insert and print)
 
 # --- Centre of gravity vs thrust line --------------------------------------------
@@ -226,9 +229,9 @@ so the bolts are not loaded in normal flight; they hold the arm in and take cras
 | Check | Value | Allowed | Result |
 |---|---|---|---|
 | Force per leg | {f(F_leg)} N | | |
-| Moment at the top of the strut | {f(M_leg / 1000, 2)} N·m | | |
+| Moment at the top of the strut (skid at 0.3 x the landing force) | {f(M_leg / 1000, 2)} N·m | | |
 | Strut bending stress (printed on its side) | {f(sigma_leg, 1)} MPa | {f(allow_xy, 1)} MPa | {ok(sigma_leg, allow_xy)} |
-| Pull on the outer leg bolt / insert | {f(bolt_T, 0)} N | ~{INSERT_PULLOUT/SAFETY_FACTOR:.0f} N (insert pull-out {INSERT_PULLOUT:.0f} N / {SAFETY_FACTOR:.0f}) | {ok(bolt_T, INSERT_PULLOUT/SAFETY_FACTOR)} |
+| Worst pull on a leg bolt / insert (sideways skid) | {f(bolt_T, 0)} N | ~{INSERT_PULLOUT/SAFETY_FACTOR:.0f} N (insert pull-out {INSERT_PULLOUT:.0f} N / {SAFETY_FACTOR:.0f}) | {ok(bolt_T, INSERT_PULLOUT/SAFETY_FACTOR)} |
 
 ## Balance
 

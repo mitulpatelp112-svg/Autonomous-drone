@@ -7,18 +7,18 @@ changing `params.py`. Estimates, not a substitute for testing a printed arm.
 
 | Item | Value |
 |---|---|
-| All-up weight (HOOVO pack + 200 g payload) | **2,293 g** (22.5 N) |
-| Printed frame (from CAD, 50% fill) | 619 g |
-| Hover thrust per motor | 5.6 N (573 g) |
+| All-up weight (HOOVO pack + 200 g payload) | **2,270 g** (22.3 N) |
+| Printed frame (from CAD, 50% fill) | 596 g |
+| Hover thrust per motor | 5.6 N (568 g) |
 | Max thrust per motor (Motor sheet, 22.2 V, CF16x5.5) | 17.1 N (1,740 g) |
-| Thrust-to-weight | 3.03 : 1 |
+| Thrust-to-weight | 3.07 : 1 |
 | Material | PETG, E = 2000 MPa, strength 45 MPa along lines / 25 MPa across layers, safety factor 3 |
 
 Mass breakdown:
 
 | Part | g |
 |---|---|
-| Frame (printed, from CAD volume) | 619 |
+| Frame (printed, from CAD volume) | 596 |
 | 4 x 5010 360KV motor (listing: 80 g) | 320 |
 | 4 x 30 A ESC (est. 25 g) | 100 |
 | 4 x 16-inch carbon prop (est. 22 g) | 88 |
@@ -36,16 +36,16 @@ Mass breakdown:
 | Check | Value | Allowed | Result |
 |---|---|---|---|
 | Bending moment at the tunnel exit, full thrust | 3.53 N·m | | |
-| Peak bending stress (at 133 mm from centre) | 2.13 MPa | 15.0 MPa | OK |
-| Tip deflection at hover | 0.44 mm | < 2 mm | OK |
-| Tip deflection at full thrust | 1.33 mm | < 4 mm | OK |
+| Peak bending stress (at 133 mm from centre) | 2.24 MPa | 15.0 MPa | OK |
+| Tip deflection at hover | 0.45 mm | < 2 mm | OK |
+| Tip deflection at full thrust | 1.37 mm | < 4 mm | OK |
 | Motor torque reaction | 0.31 N·m | | |
 | Torsion shear in the arm walls | 0.13 MPa | 6.7 MPa | OK |
-| First bending frequency of an arm | 49 Hz | | |
+| First bending frequency of an arm | 48 Hz | | |
 | Motor speed at hover / full thrust (est.) | 65 / 113 Hz | | |
-| Blade-pass at hover (2 blades) | 130 Hz | | |
+| Blade-pass at hover (2 blades) | 129 Hz | | |
 
-The arm's first bending frequency (~49 Hz, a rough estimate) sits 25% below the hover rotor speed.
+The arm's first bending frequency (~48 Hz, a rough estimate) sits 25% below the hover rotor speed.
 The rotors only pass through it briefly at low throttle (descents), which is normal for printed frames. Do not make the arms
 moderately stiffer: that would move the frequency onto hover speed. Instead: balance the props, soft-mount the flight
 controller on its grommets, and turn on ArduPilot's throttle-based harmonic notch (the ESCs have no RPM telemetry).
@@ -68,21 +68,21 @@ so the bolts are not loaded in normal flight; they hold the arm in and take cras
 
 | Check | Value | Allowed | Result |
 |---|---|---|---|
-| Force per leg | 45.0 N | | |
-| Moment at the top of the strut | 2.48 N·m | | |
-| Strut bending stress (printed on its side) | 4.7 MPa | 15.0 MPa | OK |
-| Pull on the outer leg bolt / insert | 73 N | ~167 N (insert pull-out 500 N / 3) | OK |
+| Force per leg | 44.5 N | | |
+| Moment at the top of the strut (skid at 0.3 x the landing force) | 1.47 N·m | | |
+| Strut bending stress (printed on its side) | 3.0 MPa | 15.0 MPa | OK |
+| Worst pull on a leg bolt / insert (sideways skid) | 92 N | ~167 N (insert pull-out 500 N / 3) | OK |
 
 ## Balance
 
 | Item | Value |
 |---|---|
-| Centre of gravity height (z = 0 is the body underside) | 0.7 mm |
+| Centre of gravity height (z = 0 is the body underside) | 0.6 mm |
 | Prop plane height (est.) | 70.0 mm |
-| CG below the props by | 69.3 mm |
+| CG below the props by | 69.4 mm |
 
 A CG below the prop plane (battery underneath) is stable and easy to tune. Keep the battery
-centred front-to-back: a 10 mm shift moves the CG 3.6 mm.
+centred front-to-back: a 10 mm shift moves the CG 3.7 mm.
 
 ## Prop clearances
 

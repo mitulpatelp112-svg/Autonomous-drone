@@ -46,8 +46,7 @@ if __name__ == "__main__":
     for ang in bf.ARM_ANGLES:
         items.append((bf.place_arm(parts["arm"], ang), arm_c))
         items.append((bf.place_leg(parts["leg"], ang), grey))
-    mx = -(bf.CORE / 2 - bf.WALL - bf.MAST_BOSS_D / 2)
-    items.append((parts["mast"].translate((mx, 0, bf.BODY_H - 20)), grey))
+    items.append((bf.place_mast(parts["mast"]), grey))
 
     fig = plt.figure(figsize=(14, 7), dpi=110)
     for i, (el, az, title) in enumerate([(28, -55, "Assembly"), (90, -90, "Top view")]):

@@ -71,9 +71,9 @@ def arm():
             hz = h_at(cx)
             a = a.cut(cq.Workplane("XZ").center(cx, hz * 0.45).slot2D(pitch - 8, hz * 0.38).extrude(ARM_W / 2 + 1, both=True))
 
-    # Arm-to-body bolts (clearance; the inserts are in the body roof).
-    for x in JOINT_BOLT_X:
-        a = a.cut(cq.Workplane("XY").center(x, 0).circle(SCREW_CLEAR_D / 2).extrude(ARM_H_ROOT + 2).translate((0, 0, -1)))
+    # Arm-to-body bolts (clearance; the inserts are in the body roof), either side of the wire channel.
+    for x, y in JOINT_BOLTS:
+        a = a.cut(cq.Workplane("XY").center(x, y).circle(SCREW_CLEAR_D / 2).extrude(ARM_H_ROOT + 2).translate((0, 0, -1)))
     # Leg inserts in the arm underside.
     for dx in (-LEG_BOLT_SPACING / 2, LEG_BOLT_SPACING / 2):
         a = a.cut(cq.Workplane("XY").center(LEG_R - ARM_R0 + dx, 0).circle(INSERT_HOLE_D / 2).extrude(INSERT_DEPTH))
@@ -109,16 +109,17 @@ def body():
         pocket = cq.Workplane("XY").box(ARM_R0 - 4 - (CORE / 2 - WALL), BOSS_W - 2 * WALL, h,
                                         centered=(False, True, False)).translate((CORE / 2 - WALL, 0, FLOOR))
         b = b.cut(rot(pocket))
-        # Wire hole from the tunnel into the bay.
-        wire = (cq.Workplane("YZ").circle(6).extrude(ARM_R0 - 30 + 2)
-                .translate((30, 0, FLOOR + 10)))
+        # Wire opening in the bulkhead, level with the arm's top channel and open at the top, so the
+        # ESC leads drop straight from the channel into the pocket and on to the bay (and can be laid in from above).
+        wire = (cq.Workplane("XY").box(ARM_R0 - (CORE / 2 - WALL), WIRE_PASS[0], h, centered=(False, True, False))
+                .translate((CORE / 2 - WALL, 0, WIRE_PASS[1])))
         b = b.cut(rot(wire))
         # Joint bolts: clearance through the floor, insert in the roof.
-        for x in JOINT_BOLT_X:
+        for x, y in JOINT_BOLTS:
             bx = ARM_R0 + x
-            b = b.cut(rot(cq.Workplane("XY").center(bx, 0).circle(SCREW_CLEAR_D / 2).extrude(FLOOR + 1).translate((0, 0, -0.5))))
-            b = b.cut(rot(cq.Workplane("XY").center(bx, 0).circle(INSERT_HOLE_D / 2).extrude(INSERT_DEPTH + 1).translate((0, 0, h - INSERT_DEPTH))))
-            b = b.cut(rot(cq.Workplane("XY").center(bx, 0).circle(SCREW_CLEAR_D / 2).extrude(ROOF + 1).translate((0, 0, h - ROOF - 0.5))))
+            b = b.cut(rot(cq.Workplane("XY").center(bx, y).circle(SCREW_CLEAR_D / 2).extrude(FLOOR + 1).translate((0, 0, -0.5))))
+            b = b.cut(rot(cq.Workplane("XY").center(bx, y).circle(INSERT_HOLE_D / 2).extrude(INSERT_DEPTH + 1).translate((0, 0, h - INSERT_DEPTH))))
+            b = b.cut(rot(cq.Workplane("XY").center(bx, y).circle(SCREW_CLEAR_D / 2).extrude(ROOF + 1).translate((0, 0, h - ROOF - 0.5))))
 
     # Stack standoffs (power board + Kakute H7 v1.5 on 30.5 mm) with M3 inserts.
     for sx in (-1, 1):
@@ -133,29 +134,34 @@ def body():
             b = b.cut(cq.Workplane("XY").box(STRAP[0], STRAP[1], FLOOR * 3).translate((sx, sy, 0)))
     b = b.cut(cq.Workplane("XY").box(LEAD_SLOT[0], LEAD_SLOT[1], FLOOR * 3).translate((0, -38, 0)))
 
-    # GPS mast socket at the rear of the bay, with a side insert for a locking screw.
-    mx = -(CORE / 2 - WALL - MAST_BOSS_D / 2)
-    b = b.union(cq.Workplane("XY").center(mx, 0).circle(MAST_BOSS_D / 2).extrude(h))
-    b = b.cut(cq.Workplane("XY").center(mx, 0).circle(MAST_SOCKET_D / 2).extrude(25).translate((0, 0, h - 25)))
-    b = b.cut(cq.Workplane("YZ").circle(INSERT_HOLE_D / 2).extrude(MAST_BOSS_D).translate((mx, 0, h - 10)))
+    # GPS mast socket on the OUTSIDE of the rear wall (keeps the bay floor clear for the battery strap).
+    # Lock screw goes in from the back; the GPS cable turns under the mast and enters the bay through the wall.
+    b = b.union(cq.Workplane("XY").center(MAST_X, 0).circle(MAST_BOSS_D / 2).extrude(h))
+    b = b.cut(cq.Workplane("XY").center(MAST_X, 0).circle(MAST_SOCKET_D / 2).extrude(MAST_SOCKET_DEPTH)
+              .translate((0, 0, h - MAST_SOCKET_DEPTH)))
+    rear = MAST_X - MAST_BOSS_D / 2
+    b = b.cut(cq.Workplane("YZ").circle(INSERT_HOLE_D / 2).extrude(INSERT_DEPTH).translate((rear, 0, h - 10)))
+    b = b.cut(cq.Workplane("YZ").circle(SCREW_CLEAR_D / 2).extrude(MAST_BOSS_D / 2).translate((rear, 0, h - 10)))
+    cable_z0 = h - MAST_SOCKET_DEPTH
+    b = b.cut(cq.Workplane("XY").box(-(CORE / 2 - WALL) + 1 - MAST_X, 9, MAST_LOCK_GAP, centered=(False, True, False))
+              .translate((MAST_X, 0, cable_z0)))
 
     # Receiver antenna holes in the front wall, and USB access on the side.
     for y in (-15, 15):
         b = b.cut(cq.Workplane("YZ").center(y, h - 8).circle(2.2).extrude(WALL * 3).translate((CORE / 2 - WALL * 2, 0, 0)))
-    b = b.cut(cq.Workplane("XZ").center(0, FLOOR + STANDOFF_H + 14).rect(16, 10).extrude(-WALL * 3).translate((0, -CORE / 2 + WALL * 2, 0)))
+    b = b.cut(cq.Workplane("XY").box(16, WALL * 3, 10).translate((0, -CORE / 2 + WALL / 2, FLOOR + STANDOFF_H + 14)))
     return b
 
 
 def leg():
-    """Bolt-on leg in its own frame: mount face at z = 0, +X points outward along the arm."""
-    t = LEG_T
-    splay = math.radians(LEG_SPLAY_DEG)
-    foot_x = math.tan(splay) * (LEG_H - 6)
-    prof = [(-22, 0), (22, 0), (22, -6),
-            (t / 2 + 4, -6), (foot_x + t / 2, -LEG_H + 4), (foot_x + 18, -LEG_H + 4), (foot_x + 18, -LEG_H),
-            (foot_x - 18, -LEG_H), (foot_x - 18, -LEG_H + 4), (foot_x - t / 2, -LEG_H + 4),
-            (-t / 2 - 4, -6), (-22, -6)]
+    """Bolt-on leg in its own frame: mount face at z = 0, +X points outward along the arm.
+    Vertical strut with a gusset under the pad; both bolts sit outside the strut and foot so a
+    driver goes straight up to them."""
+    t, p = LEG_T, LEG_PAD_L / 2
+    prof = [(-p, 0), (p, 0), (p, -6), (t / 2 + 3, -6), (t / 2, -26), (t / 2, -LEG_H + 4),
+            (-t / 2, -LEG_H + 4), (-t / 2, -26), (-t / 2 - 3, -6), (-p, -6)]
     l = cq.Workplane("XZ").polyline(prof).close().extrude(LEG_WIDTH / 2, both=True)
+    l = l.union(cq.Workplane("XY").box(LEG_FOOT[0], LEG_FOOT[1], 4, centered=(True, True, False)).translate((0, 0, -LEG_H)))
     for dx in (-LEG_BOLT_SPACING / 2, LEG_BOLT_SPACING / 2):
         l = l.cut(cq.Workplane("XY").center(dx, 0).circle(SCREW_CLEAR_D / 2).extrude(-7))
         l = l.cut(cq.Workplane("XY").center(dx, 0).circle(3.2).extrude(-3).translate((0, 0, -6 + 3)))
@@ -165,9 +171,9 @@ def leg():
 def mast():
     m = cq.Workplane("XY").circle(MAST_D / 2).extrude(MAST_L)
     m = m.union(cq.Workplane("XY").box(GPS_PLATE, GPS_PLATE, 3, centered=(True, True, False)).translate((0, 0, MAST_L)))
-    m = m.cut(cq.Workplane("XY").circle(3.5).extrude(MAST_L + 5))                  # cable bore
+    m = m.cut(cq.Workplane("XY").circle(MAST_BORE_D / 2).extrude(MAST_L + 5))      # cable bore (SH1.0 plug passes)
     m = m.cut(cq.Workplane("XY").box(8, 30, 6).translate((0, 0, MAST_L - 8)))      # cable exit window
-    m = m.cut(cq.Workplane("XY").box(2, 20, 20).translate((MAST_D / 2 + 0.2, 0, 10)))  # flat for the locking screw
+    m = m.cut(cq.Workplane("XY").box(2, 20, 20).translate((-(MAST_D / 2 + 0.2), 0, 10)))  # flat for the lock screw (faces the rear)
     return m
 
 
@@ -177,6 +183,10 @@ def place_arm(a, ang):
 
 def place_leg(l, ang):
     return l.translate((LEG_R, 0, FLOOR + FIT)).rotate((0, 0, 0), (0, 0, 1), ang)
+
+
+def place_mast(m):
+    return m.translate((MAST_X, 0, BODY_H - 20))
 
 
 def fit_on_bed(shape):
@@ -220,8 +230,7 @@ if __name__ == "__main__":
     for i, ang in enumerate(ARM_ANGLES):
         asm.add(place_arm(parts["arm"], ang), name=f"arm_{i + 1}", color=cq.Color(0.05, 0.42, 0.48))
         asm.add(place_leg(parts["leg"], ang), name=f"leg_{i + 1}", color=cq.Color(0.55, 0.57, 0.6))
-    mx = -(CORE / 2 - WALL - MAST_BOSS_D / 2)
-    asm.add(parts["mast"].translate((mx, 0, BODY_H - 20)), name="gps_mast", color=cq.Color(0.55, 0.57, 0.6))
+    asm.add(place_mast(parts["mast"]), name="gps_mast", color=cq.Color(0.55, 0.57, 0.6))
     asm.save(str(OUT / "assembly.step"))
 
     # Interference check: arms must not touch the body except through the clearance.

@@ -28,7 +28,6 @@ def placement(dx, dy, dz, ang):
 
 if __name__ == "__main__":
     geo = {"body": mesh(bf.body()), "arm": mesh(bf.arm()), "leg": mesh(bf.leg()), "mast": mesh(bf.mast())}
-    mx = -(CORE / 2 - WALL - MAST_BOSS_D / 2)
     inst = [{"id": "body", "geo": "body", "m": placement(0, 0, 0, 0)}]
     names = {45: "front-left", 135: "rear-left", 225: "rear-right", 315: "front-right"}
     for i, ang in enumerate(bf.ARM_ANGLES):
@@ -36,9 +35,10 @@ if __name__ == "__main__":
                      "m": placement(ARM_R0, 0, FLOOR + FIT, ang)})
         inst.append({"id": f"leg_{i + 1}", "geo": "leg", "label": f"Leg {i + 1} ({names[ang]})", "angle": ang,
                      "m": placement(LEG_R, 0, FLOOR + FIT, ang)})
-    inst.append({"id": "mast", "geo": "mast", "label": "GPS mast", "m": placement(mx, 0, BODY_H - 20, 0)})
+    inst.append({"id": "mast", "geo": "mast", "label": "GPS mast", "m": placement(MAST_X, 0, BODY_H - 20, 0)})
     rep = json.loads((Path(__file__).parent / "out" / "report.json").read_text())
-    data = {"geometries": geo, "instances": inst, "report": rep,
+    clear = json.loads((Path(__file__).parent / "out" / "clearance.json").read_text())
+    data = {"geometries": geo, "instances": inst, "report": rep, "clearance": clear,
             "motorR": MOTOR_R, "propD": PROP_D, "padTop": FLOOR + FIT + ARM_H_TIP}
     (OUT / "model.json").write_text(json.dumps(data))
     print({k: (g["verts"], g["tris"]) for k, g in geo.items()}, round((OUT / "model.json").stat().st_size / 1e6, 2), "MB")
