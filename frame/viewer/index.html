@@ -54,7 +54,7 @@ button:disabled { opacity: .5; cursor: default; }
 .parts button[aria-pressed="true"] { background: var(--sunk); border-color: var(--line); }
 .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
 .parts .m { margin-left: auto; font: 400 .75rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-dl.dims { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; margin: 0; font-size: .86rem; }
+dl.dims { display: grid; grid-template-columns: minmax(8em, 1fr) minmax(0, 1.3fr); gap: 6px 12px; margin: 0; font-size: .86rem; }
 dl.dims dt { color: var(--muted); }
 dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
 .note { font-size: .82rem; color: var(--muted); }
@@ -74,7 +74,7 @@ dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-
   <header class="bar">
     <div style="display:grid;gap:3px">
       <h1>680 mm quad frame</h1>
-      <span class="spec">PETG · 16 × 5.5 props · body + 4 arms + 4 legs + GPS mast</span>
+      <span class="spec">PETG · 16 × 5.5 props · body + 4 arms + 4 spring legs + GPS mast</span>
     </div>
     <div class="tools">
       <label for="explode">Explode <input id="explode" type="range" min="0" max="100" value="0"></label>
@@ -138,11 +138,11 @@ const SPECS = {
     ["Joints", [["Body bolts (x from root, y)", "(12, +9.5) and (30, −9.5)"], ["Leg inserts (radius)", "170 and 200"], ["Pocket under motor pad", "Ø38 × 14"], ["Lightening slots", "3 spans through the web"]]],
     ["Load check (full thrust 17.1 N)", [["Moment at body exit", "3.53 N·m"], ["Peak stress", "2.2 MPa (limit 15)"], ["Tip deflection hover / max", "0.45 / 1.37"], ["First bending frequency", "~48 Hz"]]],
   ], print: "Flat side down, diagonally on the bed (209.7 mm footprint). 4 walls." },
-  leg: { title: "Landing leg", qty: 4, groups: [
-    ["Envelope", [["Height", "110"], ["Strut", "vertical, 14 × 16, gusset under the pad"], ["Foot", "20 × 32 × 4"], ["Mount pad", "46 × 16 × 6"]]],
-    ["Mounting", [["Bolts", "2 × M3 × 8 into arm inserts, straight up from below"], ["Bolt spacing", "30 (outside the strut and foot)"], ["Counterbore", "Ø6.4 × 3"], ["Mount radius", "185 from frame centre"]]],
-    ["Load check (4 g landing on 2 legs)", [["Force per leg", "45 N"], ["Strut stress", "3.0 MPa (limit 15)"], ["Worst bolt pull (sideways skid)", "92 N (limit ~167)"]]],
-  ], print: "On its side (the 16 mm face)." },
+  leg: { title: "Curved spring leg", qty: 4, groups: [
+    ["Envelope", [["Height (unloaded)", "110"], ["Leaf", "C-shape, 28 W × 4.8 thick, 145 long"], ["Bow outward", "50"], ["Mount pad", "54 × 28 × 6"], ["Foot", "24 × 28 × 4"]]],
+    ["Mounting", [["Bolts", "2 × M3 × 8 into arm inserts, straight up from below"], ["Bolt spacing", "30 (inboard of the leaf)"], ["Counterbore", "Ø6.4 × 3"], ["Mount radius", "185 from frame centre"]]],
+    ["Spring (per leg)", [["Spring rate", "2.6 N/mm"], ["Sag at rest", "2.2"], ["0.5 m/s landing", "7.5 compress, 12 MPa"], ["1.2 m/s hard landing", "18 compress, 30 MPa"], ["Gives way at", "~63 N (1.6 m/s on 4 legs)"]]],
+  ], print: "On its side (C flat on the bed), 100% infill so the leaf acts as a spring." },
   mast: { title: "GPS mast", qty: 1, groups: [
     ["Envelope", [["Tube", "Ø12 × 100"], ["Inserted into body", "20"], ["GPS plate", "30 × 30 × 3"], ["Cable bore", "Ø8 (JST-SH plug passes)"]]],
     ["Fits", [["SEQURE M10-252Q", "25 × 25 (M10-182Q: 18 × 18)"], ["Lock screw", "M3 from the back, on a flat"]]],
@@ -319,7 +319,7 @@ function regionOf(p, local) {
     if (local.x < -(48 - 1) && Math.abs(local.y) < 14) return "GPS mast boss";
     return r < 45 ? "electronics bay" : r < 92 ? "socket boss" : "arm socket";
   }
-  if (p.geo === "leg") return local.z > -10 ? "mount pad" : local.z < -100 ? "foot" : "strut";
+  if (p.geo === "leg") return local.z > -6 ? "mount pad" : local.z < -105 ? "foot" : local.x > 60 ? "spring leaf (bow)" : "spring leaf";
   return local.z > 95 ? "GPS plate" : "tube";
 }
 

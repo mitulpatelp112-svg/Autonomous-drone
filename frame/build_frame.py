@@ -153,15 +153,29 @@ def body():
     return b
 
 
+def leaf_arc():
+    """Centre, radius and end angle of the leaf centreline (leg frame, x outward, z up)."""
+    za, zb = -3.0, -LEG_H + 3.0          # starts inside the pad, ends inside the foot
+    h, zm = (za - zb) / 2, (za + zb) / 2
+    r = (h * h + LEAF_BULGE ** 2) / (2 * LEAF_BULGE)
+    cx = LEAF_X + LEAF_BULGE - r
+    return cx, zm, r, math.atan2(za - zm, LEAF_X - cx)
+
+
 def leg():
-    """Bolt-on leg in its own frame: mount face at z = 0, +X points outward along the arm.
-    Vertical strut with a gusset under the pad; both bolts sit outside the strut and foot so a
-    driver goes straight up to them."""
-    t, p = LEG_T, LEG_PAD_L / 2
-    prof = [(-p, 0), (p, 0), (p, -6), (t / 2 + 3, -6), (t / 2, -26), (t / 2, -LEG_H + 4),
-            (-t / 2, -LEG_H + 4), (-t / 2, -26), (-t / 2 - 3, -6), (-p, -6)]
-    l = cq.Workplane("XZ").polyline(prof).close().extrude(LEG_WIDTH / 2, both=True)
-    l = l.union(cq.Workplane("XY").box(LEG_FOOT[0], LEG_FOOT[1], 4, centered=(True, True, False)).translate((0, 0, -LEG_H)))
+    """Curved spring leg in its own frame: mount face at z = 0, +X points outward along the arm.
+    Mount pad with two bolts, a C-shaped leaf bowing outward, and a foot pad under the leaf."""
+    cx, zm, r, th = leaf_arc()
+    pt = lambda rad, a: (cx + rad * math.cos(a), zm + rad * math.sin(a))
+    ro, ri = r + LEAF_T / 2, r - LEAF_T / 2
+    leaf = (cq.Workplane("XZ").moveTo(*pt(ro, th)).threePointArc(pt(ro, 0), pt(ro, -th))
+            .lineTo(*pt(ri, -th)).threePointArc(pt(ri, 0), pt(ri, th)).close()
+            .extrude(LEG_WIDTH / 2, both=True))
+    p0, p1 = LEG_PAD
+    l = cq.Workplane("XY").box(p1 - p0, LEG_WIDTH, 6, centered=False).translate((p0, -LEG_WIDTH / 2, -6))
+    l = l.union(leaf)
+    f0, f1 = LEG_FOOT
+    l = l.union(cq.Workplane("XY").box(f1 - f0, LEG_WIDTH, 4, centered=False).translate((f0, -LEG_WIDTH / 2, -LEG_H)))
     for dx in (-LEG_BOLT_SPACING / 2, LEG_BOLT_SPACING / 2):
         l = l.cut(cq.Workplane("XY").center(dx, 0).circle(SCREW_CLEAR_D / 2).extrude(-7))
         l = l.cut(cq.Workplane("XY").center(dx, 0).circle(3.2).extrude(-3).translate((0, 0, -6 + 3)))
@@ -220,7 +234,7 @@ if __name__ == "__main__":
         report["parts"][name] = {
             "count": {"body": 1, "arm": 4, "leg": 4, "mast": 1}[name],
             "solid_volume_cm3": round(vol_cm3, 1),
-            "est_mass_g": round(vol_cm3 * PETG_DENSITY * PRINT_FILL, 1),
+            "est_mass_g": round(vol_cm3 * PETG_DENSITY * (1.0 if name == "leg" else PRINT_FILL), 1),  # spring legs print solid
             "print_rotation_deg": deg, "footprint_mm": [round(xl, 1), round(yl, 1)], "height_mm": round(zl, 1),
             "fits_bed": side <= BED - 2 * BED_MARGIN,
         }

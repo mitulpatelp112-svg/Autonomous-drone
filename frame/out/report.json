@@ -26,14 +26,14 @@
   },
   "leg": {
    "count": 4,
-   "solid_volume_cm3": 30.1,
-   "est_mass_g": 19.1,
-   "print_rotation_deg": 45,
+   "solid_volume_cm3": 31.1,
+   "est_mass_g": 39.5,
+   "print_rotation_deg": 0,
    "footprint_mm": [
-    101.1,
-    101.1
+    100.4,
+    110.0
    ],
-   "height_mm": 32.0,
+   "height_mm": 28.0,
    "fits_bed": true
   },
   "mast": {

@@ -146,19 +146,62 @@ wall_area = 2 * ((BOSS_W - ARM_W - 2 * FIT) / 2) * 30      # side walls above th
 wall_sigma_z = F_edge / wall_area
 allow_z = PETG_UTS_Z / SAFETY_FACTOR
 
-# --- Landing on the legs --------------------------------------------------------
-LAND_G = 4.0                                               # hard landing, all weight on 2 legs
-F_leg = W_N * LAND_G / 2
-F_lat = 0.3 * F_leg                                        # sideways skid at touchdown (friction 0.3)
-M_leg = F_lat * LEG_H                                      # straight strut: only the skid bends it
-Z_leg = min(LEG_WIDTH * LEG_T**2, LEG_T * LEG_WIDTH**2) / 6   # weaker of the two directions
-sigma_leg = M_leg / Z_leg + F_leg / (LEG_T * LEG_WIDTH)
-# Skid along the arm: pad tips about its edge, far bolt takes it. Skid across the arm: pad tips
-# about its 16 mm side edge, both bolts share it at 8 mm leverage.
-bolt_T_along = M_leg * (LEG_PAD_L / 2 + LEG_BOLT_SPACING / 2) / ((LEG_PAD_L / 2 + LEG_BOLT_SPACING / 2) ** 2 + (LEG_PAD_L / 2 - LEG_BOLT_SPACING / 2) ** 2)
-bolt_T_across = M_leg / (2 * LEG_WIDTH / 2)
+# --- Landing on the curved spring legs ---------------------------------------------
+# Curved-beam model of the leaf centreline (pad and foot rigid): bending energy U = sum M^2 ds / 2EI,
+# with M from the foot force (vertical P plus a sideways skid of SKID x P either way).
+from build_frame import leaf_arc
+_cx, _zm, _r, _th = leaf_arc()
+_t = np.linspace(_th, -_th, 600)
+_lx, _lz = _cx + _r * np.cos(_t), _zm + _r * np.sin(_t)
+_ds = _r * abs(_t[1] - _t[0])
+_free = _lz < -6.0
+_xb, _zb = _lx[-1], _lz[-1]
+I_leaf = LEG_WIDTH * LEAF_T ** 3 / 12
+
+
+def leaf_moments(Fx, Fz):
+    return ((_xb - _lx) * Fz - (_zb - _lz) * Fx)[_free]
+
+
+k_leg = 1 / (2 * (leaf_moments(0, 1.0) ** 2).sum() * _ds / (2 * PETG_E * I_leaf))     # N/mm
+peak_M = lambda P: max(np.abs(leaf_moments(f * P, P)).max() for f in (-SKID, 0, SKID))
+leaf_sigma = lambda P: peak_M(P) * (LEAF_T / 2) / I_leaf
+P_unit_sigma = leaf_sigma(1.0)                                     # MPa per N (linear)
+leaf_len = _free.sum() * _ds
+ground0 = BATTERY[2] * 0 + (LEG_H - FLOOR - FIT) - BATTERY[2]     # battery-to-ground gap, unloaded
+sag = (W_N / 4) / k_leg
+
+
+def landing(v, legs):
+    """Peak force per leg, travel, stress and g for a vertical touchdown at v (m/s) on `legs` legs."""
+    U = 0.5 * (AUW_G / 1000) * v ** 2 / legs * 1000                # mJ = N*mm per leg
+    P = math.sqrt(2 * U * k_leg)
+    return {"v": v, "legs": legs, "U": U, "P": P, "d": P / k_leg, "sigma": leaf_sigma(P),
+            "g": (legs * P) / W_N, "gap": ground0 - sag - P / k_leg}
+
+
+cases = [landing(LAND_V_NORMAL, 4), landing(1.0, 4), landing(LAND_V_HARD, 4), landing(LAND_V_HARD, 2)]
+P_break = LEAF_STRESS_BREAK / P_unit_sigma
+U_break = P_break ** 2 / (2 * k_leg)
+v_break4 = math.sqrt(2 * 4 * U_break / 1000 / (AUW_G / 1000))
+v_break2 = math.sqrt(2 * 2 * U_break / 1000 / (AUW_G / 1000))
+d_break = P_break / k_leg
+
+# Leg pad bolts at the break load: only the skid can open the joint (the vertical push closes it).
+_pivot = LEG_PAD[1]
+_h = -_zb
+_d = [_pivot - x for x in (-LEG_BOLT_SPACING / 2, LEG_BOLT_SPACING / 2)]
+M_open_along = max(0.0, SKID * P_break * _h - P_break * abs(_xb - _pivot))
+bolt_T_along = M_open_along * max(_d) / sum(x * x for x in _d)
+M_open_across = max(0.0, SKID * P_break * _h - P_break * LEG_WIDTH / 2)
+bolt_T_across = M_open_across / (2 * LEG_WIDTH / 2)
 bolt_T = max(bolt_T_along, bolt_T_across)
 INSERT_PULLOUT = 500.0                                     # N, M3 insert in PETG (rough; varies with insert and print)
+# Arm bending from the leg push at the break load (arm cantilevered from the tunnel exit).
+M_arm_leg = P_break * (LEG_R + _xb - SOCKET_TIP_R)
+sigma_arm_leg = crit[3] * M_arm_leg / (T_MAX * (ARM_LEN - crit[0]))
+# Sideways skid bends the 28 mm-wide leaf the stiff way.
+sigma_leaf_side = SKID * P_break * _h / (LEAF_T * LEG_WIDTH ** 2 / 6)
 
 # --- Centre of gravity vs thrust line --------------------------------------------
 cg_items = [  # (mass g, z mm)
@@ -224,14 +267,41 @@ so the bolts are not loaded in normal flight; they hold the arm in and take cras
 | Roof bending (7 mm roof, {roof_span:.1f} mm span) | {f(roof_sigma, 2)} MPa | {f(allow_xy, 1)} MPa | {ok(roof_sigma, allow_xy)} |
 | Side walls pulled across layers | {f(wall_sigma_z, 2)} MPa | {f(allow_z, 1)} MPa | {ok(wall_sigma_z, allow_z)} |
 
-## Legs (hard landing: {LAND_G:.0f} g on two legs)
+## Curved spring legs
 
-| Check | Value | Allowed | Result |
+Each leg is a C-shaped PETG leaf ({LEG_WIDTH:.0f} mm wide, {LEAF_T} mm thick, {f(leaf_len, 0)} mm long, bowing {LEAF_BULGE:.0f} mm outward).
+On touchdown the C closes up and stores the landing energy in bending. Modelled as a curved beam
+(linear, small deflections) with a sideways skid of {SKID:.1f} x the vertical force either way.
+
+| Property | Value |
+|---|---|
+| Spring rate per leg | {f(k_leg, 2)} N/mm |
+| Sag when sitting on the ground | {f(sag)} mm |
+| Battery-to-ground gap, unloaded / resting | {f(ground0)} / {f(ground0 - sag)} mm |
+
+| Touchdown | Energy per leg | Peak force per leg | Leg compresses | Peak deceleration | Leaf stress (limit {LEAF_STRESS_MAX:.0f}) | Battery gap left |
+|---|---|---|---|---|---|---|
+""" + "\n".join(f"| {c['v']} m/s on {c['legs']} legs | {f(c['U'] / 1000, 2)} J | {f(c['P'])} N | {f(c['d'])} mm | {f(c['g'], 1)} g | {f(c['sigma'])} MPa {ok(c['sigma'], LEAF_STRESS_MAX) if c['legs'] == 4 else ''} | {f(c['gap'])} mm |" for c in cases) + f"""
+
+The {LAND_V_NORMAL} m/s case is a normal ArduPilot landing: the leaf sees about {f(cases[0]['sigma'], 0)} MPa, low enough for
+thousands of landings. The {LAND_V_HARD} m/s case is the design hard landing. Tipping onto two legs at {LAND_V_HARD} m/s
+reaches {f(cases[3]['sigma'], 0)} MPa, {"past" if cases[3]['sigma'] > LEAF_STRESS_BREAK else "close to"} the ~{LEAF_STRESS_BREAK:.0f} MPa where the leaf is expected to bend for good:
+those legs may need replacing after a hard tip-over (print a spare pair).
+
+**Where it gives up.** The leaf is expected to bend permanently or crack at about {LEAF_STRESS_BREAK:.0f} MPa: {f(P_break)} N per leg,
+after {f(d_break)} mm of travel. That is a {f(v_break4, 1)} m/s touchdown on 4 legs or {f(v_break2, 1)} m/s on 2. The legs are
+the weak link on purpose: they are cheap bolt-on parts, and everything behind them stays well inside its limits at that load:
+
+| At the leg's break load ({f(P_break)} N) | Value | Allowed | Result |
 |---|---|---|---|
-| Force per leg | {f(F_leg)} N | | |
-| Moment at the top of the strut (skid at 0.3 x the landing force) | {f(M_leg / 1000, 2)} N·m | | |
-| Strut bending stress (printed on its side) | {f(sigma_leg, 1)} MPa | {f(allow_xy, 1)} MPa | {ok(sigma_leg, allow_xy)} |
-| Worst pull on a leg bolt / insert (sideways skid) | {f(bolt_T, 0)} N | ~{INSERT_PULLOUT/SAFETY_FACTOR:.0f} N (insert pull-out {INSERT_PULLOUT:.0f} N / {SAFETY_FACTOR:.0f}) | {ok(bolt_T, INSERT_PULLOUT/SAFETY_FACTOR)} |
+| Battery-to-ground gap left | {f(ground0 - sag - d_break)} mm | > 0 | {"OK" if ground0 - sag - d_break > 0 else "TOUCHES"} |
+| Worst pull on a leg bolt / insert | {f(bolt_T, 0)} N | ~{INSERT_PULLOUT/SAFETY_FACTOR:.0f} N (insert pull-out {INSERT_PULLOUT:.0f} N / {SAFETY_FACTOR:.0f}) | {ok(bolt_T, INSERT_PULLOUT/SAFETY_FACTOR)} |
+| Arm bending stress from the leg push | {f(sigma_arm_leg, 1)} MPa | {f(allow_xy, 1)} MPa | {ok(sigma_arm_leg, allow_xy)} |
+| Leaf stress from a sideways skid (stiff direction) | {f(sigma_leaf_side, 1)} MPa | {f(allow_xy, 1)} MPa | {ok(sigma_leaf_side, allow_xy)} |
+
+**Printing the legs:** on their side (the C lies flat on the bed), so the printed lines run along the curve and the leaf bends
+along its lines, not across layers. Print them solid (100% infill or 6+ walls); a leaf with sparse infill is much
+softer and weaker than this model. Each leg is about {f(rep['parts']['leg']['est_mass_g'], 0)} g printed solid.
 
 ## Balance
 

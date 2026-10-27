@@ -53,15 +53,24 @@ MAST_X = -(CORE / 2 + MAST_BOSS_D / 2 - 1)   # mast axis (behind the rear wall)
 MAST_SOCKET_DEPTH = 28.0        # mast sits 20 mm deep; 8 mm below it for the cable to turn into the bay
 MAST_LOCK_GAP = 7.5             # height of the cable passage from under the mast into the bay (9 mm wide)
 
-# --- Legs (4x) -----------------------------------------------------------------
-LEG_H = 110.0                   # chosen: 110 mm, clears a 52 mm battery
+# --- Legs (4x): curved PETG spring legs ------------------------------------------
+# A C-shaped leaf hangs from a mount pad and bows outward. On touchdown the C closes up and
+# stores the landing energy in bending, like a leaf spring. analysis.py sizes it.
+LEG_H = 110.0                   # pad top to ground (unloaded); clears a 52 mm battery
 LEG_R = 185.0                   # leg mount radius (under each arm)
-# The strut is vertical so a screwdriver reaches both leg bolts straight from below (a splayed strut covered the outer bolt).
-LEG_T = 14.0                    # strut thickness in the side profile
-LEG_WIDTH = 16.0                # extrusion width (print flat on this face)
-LEG_BOLT_SPACING = 30.0         # bolts sit outside the strut (strut top +/-10 mm); inserts fall between the arm's lightening slots
-LEG_PAD_L = 46.0                # mount pad length along the arm
-LEG_FOOT = (20.0, 32.0)         # foot pad (along the arm, across the arm); narrow along the arm so it doesn't cover the bolts
+LEG_WIDTH = 28.0                # leaf width = print height (printed on its side); matches the arm
+LEAF_T = 4.8                    # leaf thickness (print solid: 100% infill or enough walls)
+LEAF_X = 26.0                   # leaf hangs from here (leg frame, x outward along the arm): outboard of both bolts
+LEAF_BULGE = 50.0               # how far the C bows outward at mid-height (50 = almost a semicircle)
+LEG_BOLT_SPACING = 30.0         # both bolts sit inboard of the leaf, so a driver goes straight up to them
+LEG_PAD = (-22.0, 32.0)         # mount pad extent along the arm (leg frame)
+LEG_FOOT = (21.0, 45.0)         # foot pad extent along the arm; stays outboard of the bolts
+# Landing cases for the spring sizing
+LAND_V_NORMAL = 0.5             # m/s, ArduPilot's final landing speed (LAND_SPEED default 50 cm/s; verify in your params)
+LAND_V_HARD = 1.2               # m/s, design hard landing on all 4 legs
+SKID = 0.3                      # sideways friction at the foot, as a fraction of the vertical force
+LEAF_STRESS_MAX = 30.0          # MPa at the hard landing (printed PETG yields ~40-45 MPa along the lines)
+LEAF_STRESS_BREAK = 40.0        # MPa, where the leaf is expected to bend permanently or crack (estimate)
 
 # --- GPS mast (1 part) ---------------------------------------------------------
 MAST_D = 12.0

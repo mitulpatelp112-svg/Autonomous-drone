@@ -28,10 +28,10 @@ python3 build_frame.py && python3 clearance.py && python3 analysis.py && python3
 |---|---|---|---|
 | Body | 1 | ~157 g | Floor down, as modelled. The arm tunnels' roofs bridge 28.5 mm, so no supports. |
 | Arm | 4 | ~90 g | Flat side down (as modelled), diagonally across the bed. Longest part: 210 mm footprint. |
-| Leg | 4 | ~19 g | On its side (the 16 mm face). |
+| Leg (curved spring) | 4 | ~40 g (solid) | On its side, C flat on the bed. **100% infill** (or 6+ walls): the leaf is a spring. |
 | GPS mast | 1 | ~6 g | Upside down: GPS plate on the bed, tube standing up. |
 
-Frame total about 600 g (estimated with 4 walls + 25–30% infill; weigh your first arm).
+Frame total about 678 g (estimated with 4 walls + 25–30% infill; weigh your first arm).
 
 **PETG settings:** 0.4 mm nozzle, 0.2 mm layers, **4 walls**, 5 top / 5 bottom layers,
 25–30% gyroid infill, no supports (enable bridging). Arms rely mostly on their walls, so
@@ -73,8 +73,10 @@ The insert holes are 4.2 mm (`INSERT_HOLE_D`). If your inserts call for a differ
 7. **GPS mast.** The socket is on the outside of the rear wall, so the bay floor is clear for the battery strap.
    Thread the GPS cable down the mast (8 mm bore), push the mast in, and feed the plug through the passage under
    the mast into the bay. Lock the mast with the screw from the back. GPS on the plate, arrow forward.
-8. **Legs.** Drone upside down. Bolt each leg under its arm with 2 × M3 × 8; both bolts sit outside the strut
-   and the foot, so a straight screwdriver reaches them.
+8. **Legs.** Drone upside down. Bolt each leg under its arm with 2 × M3 × 8, with the C bowing outward (away from the
+   body). Both bolts sit inboard of the leaf and the foot, so a straight screwdriver reaches them. The legs are
+   curved PETG springs that compress about 7 mm on a normal landing and 18 mm on a 1.2 m/s hard one; they are
+   meant to be the part that gives in a crash, so print a spare pair.
 9. **Battery.** Two Velcro straps through the floor slots, battery underneath, centred.
    Note: the HOOVO pack has an EC5 plug and the power board has XT60 (see the connector check).
 

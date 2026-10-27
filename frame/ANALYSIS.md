@@ -7,18 +7,18 @@ changing `params.py`. Estimates, not a substitute for testing a printed arm.
 
 | Item | Value |
 |---|---|
-| All-up weight (HOOVO pack + 200 g payload) | **2,270 g** (22.3 N) |
-| Printed frame (from CAD, 50% fill) | 596 g |
-| Hover thrust per motor | 5.6 N (568 g) |
+| All-up weight (HOOVO pack + 200 g payload) | **2,352 g** (23.1 N) |
+| Printed frame (from CAD, 50% fill) | 678 g |
+| Hover thrust per motor | 5.8 N (588 g) |
 | Max thrust per motor (Motor sheet, 22.2 V, CF16x5.5) | 17.1 N (1,740 g) |
-| Thrust-to-weight | 3.07 : 1 |
+| Thrust-to-weight | 2.96 : 1 |
 | Material | PETG, E = 2000 MPa, strength 45 MPa along lines / 25 MPa across layers, safety factor 3 |
 
 Mass breakdown:
 
 | Part | g |
 |---|---|
-| Frame (printed, from CAD volume) | 596 |
+| Frame (printed, from CAD volume) | 678 |
 | 4 x 5010 360KV motor (listing: 80 g) | 320 |
 | 4 x 30 A ESC (est. 25 g) | 100 |
 | 4 x 16-inch carbon prop (est. 22 g) | 88 |
@@ -37,15 +37,15 @@ Mass breakdown:
 |---|---|---|---|
 | Bending moment at the tunnel exit, full thrust | 3.53 N·m | | |
 | Peak bending stress (at 133 mm from centre) | 2.24 MPa | 15.0 MPa | OK |
-| Tip deflection at hover | 0.45 mm | < 2 mm | OK |
+| Tip deflection at hover | 0.46 mm | < 2 mm | OK |
 | Tip deflection at full thrust | 1.37 mm | < 4 mm | OK |
 | Motor torque reaction | 0.31 N·m | | |
 | Torsion shear in the arm walls | 0.13 MPa | 6.7 MPa | OK |
 | First bending frequency of an arm | 48 Hz | | |
-| Motor speed at hover / full thrust (est.) | 65 / 113 Hz | | |
-| Blade-pass at hover (2 blades) | 129 Hz | | |
+| Motor speed at hover / full thrust (est.) | 66 / 113 Hz | | |
+| Blade-pass at hover (2 blades) | 132 Hz | | |
 
-The arm's first bending frequency (~48 Hz, a rough estimate) sits 25% below the hover rotor speed.
+The arm's first bending frequency (~48 Hz, a rough estimate) sits 27% below the hover rotor speed.
 The rotors only pass through it briefly at low throttle (descents), which is normal for printed frames. Do not make the arms
 moderately stiffer: that would move the frequency onto hover speed. Instead: balance the props, soft-mount the flight
 controller on its grommets, and turn on ArduPilot's throttle-based harmonic notch (the ESCs have no RPM telemetry).
@@ -64,25 +64,55 @@ so the bolts are not loaded in normal flight; they hold the arm in and take cras
 | Roof bending (7 mm roof, 28.5 mm span) | 2.89 MPa | 15.0 MPa | OK |
 | Side walls pulled across layers | 0.44 MPa | 8.3 MPa | OK |
 
-## Legs (hard landing: 4 g on two legs)
+## Curved spring legs
 
-| Check | Value | Allowed | Result |
+Each leg is a C-shaped PETG leaf (28 mm wide, 4.8 mm thick, 144 mm long, bowing 50 mm outward).
+On touchdown the C closes up and stores the landing energy in bending. Modelled as a curved beam
+(linear, small deflections) with a sideways skid of 0.3 x the vertical force either way.
+
+| Property | Value |
+|---|---|
+| Spring rate per leg | 2.60 N/mm |
+| Sag when sitting on the ground | 2.2 mm |
+| Battery-to-ground gap, unloaded / resting | 52.8 / 50.5 mm |
+
+| Touchdown | Energy per leg | Peak force per leg | Leg compresses | Peak deceleration | Leaf stress (limit 30) | Battery gap left |
+|---|---|---|---|---|---|---|
+| 0.5 m/s on 4 legs | 0.07 J | 19.5 N | 7.5 mm | 3.4 g | 12.3 MPa OK | 43.0 mm |
+| 1.0 m/s on 4 legs | 0.29 J | 39.1 N | 15.0 mm | 6.8 g | 24.7 MPa OK | 35.5 mm |
+| 1.2 m/s on 4 legs | 0.42 J | 46.9 N | 18.1 mm | 8.1 g | 29.6 MPa OK | 32.5 mm |
+| 1.2 m/s on 2 legs | 0.85 J | 66.3 N | 25.5 mm | 5.7 g | 41.9 MPa  | 25.0 mm |
+
+The 0.5 m/s case is a normal ArduPilot landing: the leaf sees about 12 MPa, low enough for
+thousands of landings. The 1.2 m/s case is the design hard landing. Tipping onto two legs at 1.2 m/s
+reaches 42 MPa, past the ~40 MPa where the leaf is expected to bend for good:
+those legs may need replacing after a hard tip-over (print a spare pair).
+
+**Where it gives up.** The leaf is expected to bend permanently or crack at about 40 MPa: 63.3 N per leg,
+after 24.4 mm of travel. That is a 1.6 m/s touchdown on 4 legs or 1.1 m/s on 2. The legs are
+the weak link on purpose: they are cheap bolt-on parts, and everything behind them stays well inside its limits at that load:
+
+| At the leg's break load (63.3 N) | Value | Allowed | Result |
 |---|---|---|---|
-| Force per leg | 44.5 N | | |
-| Moment at the top of the strut (skid at 0.3 x the landing force) | 1.47 N·m | | |
-| Strut bending stress (printed on its side) | 3.0 MPa | 15.0 MPa | OK |
-| Worst pull on a leg bolt / insert (sideways skid) | 92 N | ~167 N (insert pull-out 500 N / 3) | OK |
+| Battery-to-ground gap left | 26.1 mm | > 0 | OK |
+| Worst pull on a leg bolt / insert | 41 N | ~167 N (insert pull-out 500 N / 3) | OK |
+| Arm bending stress from the leg push | 3.1 MPa | 15.0 MPa | OK |
+| Leaf stress from a sideways skid (stiff direction) | 3.2 MPa | 15.0 MPa | OK |
+
+**Printing the legs:** on their side (the C lies flat on the bed), so the printed lines run along the curve and the leaf bends
+along its lines, not across layers. Print them solid (100% infill or 6+ walls); a leaf with sparse infill is much
+softer and weaker than this model. Each leg is about 40 g printed solid.
 
 ## Balance
 
 | Item | Value |
 |---|---|
-| Centre of gravity height (z = 0 is the body underside) | 0.6 mm |
+| Centre of gravity height (z = 0 is the body underside) | 1.2 mm |
 | Prop plane height (est.) | 70.0 mm |
-| CG below the props by | 69.4 mm |
+| CG below the props by | 68.8 mm |
 
 A CG below the prop plane (battery underneath) is stable and easy to tune. Keep the battery
-centred front-to-back: a 10 mm shift moves the CG 3.7 mm.
+centred front-to-back: a 10 mm shift moves the CG 3.6 mm.
 
 ## Prop clearances
 

@@ -32,8 +32,8 @@ None.
 | Leg insert hole to nearest lightening slot (along the arm) | 1.9 |
 | Mast lock insert (5.7 mm) to mast socket | 1.1 |
 | Motor screw head (outer slot end) to pad pocket wall | 0.8 |
-| Leg bolt head to strut gusset | 2.2 |
-| Leg bolt head to foot | 2.2 |
+| Leg bolt head to spring leaf (below the pad) | 8.2 |
+| Leg bolt head to foot | 3.2 |
 | Strap slot to bay wall | 1.0 |
 
 ## Other clearances

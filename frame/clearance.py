@@ -158,8 +158,10 @@ def walls():
     rows.append(("Leg insert hole to nearest lightening slot (along the arm)", min(gaps)))
     rows.append(("Mast lock insert (5.7 mm) to mast socket", MAST_BOSS_D / 2 - MAST_SOCKET_D / 2 - 5.7))
     rows.append(("Motor screw head (outer slot end) to pad pocket wall", PAD_POCKET_D / 2 - MOTOR_SLOT_R[1] - HEAD_D / 2))
-    rows.append(("Leg bolt head to strut gusset", LEG_BOLT_SPACING / 2 - HEAD_D / 2 - (LEG_T / 2 + 3)))
-    rows.append(("Leg bolt head to foot", LEG_BOLT_SPACING / 2 - HEAD_D / 2 - LEG_FOOT[0] / 2))
+    cx, zm, r, th = bf.leaf_arc()
+    leaf_in = min(cx + (r - LEAF_T / 2) * math.cos(th), cx + (r + LEAF_T / 2) * math.cos(th))
+    rows.append(("Leg bolt head to spring leaf (below the pad)", leaf_in - (LEG_BOLT_SPACING / 2 + HEAD_D / 2)))
+    rows.append(("Leg bolt head to foot", LEG_FOOT[0] - (LEG_BOLT_SPACING / 2 + HEAD_D / 2)))
     rows.append(("Strap slot to bay wall", (CORE / 2 - WALL) - (STRAP_X + STRAP[0] / 2)))
     return rows
 
