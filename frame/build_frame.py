@@ -30,32 +30,40 @@ def arm():
     pad = cq.Workplane("XY").center(ARM_LEN, 0).circle(PAD_D / 2).extrude(ARM_H_TIP)
     a = side.union(pad)
 
-    # Hollow under the motor pad so the motor screws can be reached from below.
+    # Hollow under the motor pad so the motor screws can be reached from below (and air can get in).
     a = a.cut(cq.Workplane("XY").center(ARM_LEN, 0).circle(PAD_POCKET_D / 2).extrude(ARM_H_TIP - PAD_T))
     a = a.cut(cq.Workplane("XY").center(ARM_LEN, 0).circle(MOTOR_CENTER_HOLE_D / 2).extrude(ARM_H_TIP + 1))
-    # Radial slots for the motor screws (8 directions covers cross and square patterns).
+    # Level landing under the whole motor base (the base is wider than the pad and the arm top slopes).
+    a = a.cut(cq.Workplane("XY").box(MOTOR_BELL_D + 4, ARM_W + 2, 20, centered=(True, True, False))
+              .translate((ARM_LEN - 2, 0, ARM_H_TIP)))
+    # Radial slots for the motor screws: a cross takes any 4-hole pattern (turn the motor to line its holes up).
     r1, r2 = MOTOR_SLOT_R
-    for ang in range(0, 360, 45):
+    for ang in MOTOR_SLOT_ANGLES:
         slot = (cq.Workplane("XY").slot2D(r2 - r1 + SCREW_CLEAR_D, SCREW_CLEAR_D)
                 .extrude(ARM_H_TIP + 1)
                 .translate(((r1 + r2) / 2, 0, 0))
                 .rotate((0, 0, 0), (0, 0, 1), ang)
                 .translate((ARM_LEN, 0, 0)))
         a = a.cut(slot)
+    # Cooling holes on the diagonals: the motor pulls air in through its base.
+    vr, vd = MOTOR_VENTS
+    for ang in (45, 135, 225, 315):
+        c = (ARM_LEN + vr * math.cos(math.radians(ang)), vr * math.sin(math.radians(ang)))
+        a = a.cut(cq.Workplane("XY").center(*c).circle(vd / 2).extrude(ARM_H_TIP + 1))
 
-    # ESC recess on top, plus two zip-tie slots straight through the arm.
+    # Flat seat for the ESC across the full arm width, plus two zip-tie slots straight through the arm.
     esc_x = ESC_R - ARM_R0
     h_at = lambda x: ARM_H_ROOT + (ARM_H_TIP - ARM_H_ROOT) * x / ARM_LEN
-    top = h_at(esc_x)
-    a = a.cut(cq.Workplane("XY").box(ESC_L, ESC_W, ESC_POCKET_DEPTH * 2)
-              .translate((esc_x, 0, top)))
+    sl, sd = ESC_SEAT
+    a = a.cut(cq.Workplane("XY").box(sl, ARM_W + 2, 20, centered=(True, True, False))
+              .translate((esc_x, 0, h_at(esc_x + sl / 2) - sd)))
     for dx in (-ESC_L / 2 + 8, ESC_L / 2 - 8):
-        z = h_at(esc_x + dx) - ESC_POCKET_DEPTH - ZIP_SLOT[1] / 2 - 2.5
+        z = h_at(esc_x + sl / 2) - sd - ZIP_SLOT[1] / 2 - 2.5
         a = a.cut(cq.Workplane("XY").box(ZIP_SLOT[0], ARM_W + 2, ZIP_SLOT[1]).translate((esc_x + dx, 0, z)))
 
     # Wire channel along the top, from the back of the ESC to the root (runs under the body roof).
     gw, gd = WIRE_GROOVE
-    groove_end = esc_x - ESC_L / 2 + 2
+    groove_end = esc_x - ESC_SEAT[0] / 2 + 2
     groove = (cq.Workplane("XZ")
               .polyline([(-1, ARM_H_ROOT - gd), (groove_end, h_at(groove_end) - gd),
                          (groove_end, ARM_H_ROOT + 5), (-1, ARM_H_ROOT + 5)]).close()

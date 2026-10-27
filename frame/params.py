@@ -17,20 +17,21 @@ ARM_W = 28.0                    # arm width (fits the 25 mm wide ESC on top)
 ARM_H_ROOT = 28.0               # arm height at the root
 ARM_H_TIP = 20.0                # arm height under the motor
 PAD_D = 46.0                    # motor pad diameter
-PAD_T = 6.0                     # motor pad thickness (screws pass through this)
+PAD_T = 5.0                     # motor pad thickness: M3 x 8 screws then reach ~3 mm into the motor base
 PAD_POCKET_D = 38.0             # pocket under the pad: a 5.5 mm screw head fits even at the outer end of a slot
-MOTOR_SLOT_R = (7.5, 15.5)      # radial slots cover the 5010's 16 mm / 19 mm patterns (and 16x16 / 25 mm)
-MOTOR_CENTER_HOLE_D = 12.0      # shaft / circlip clearance
+MOTOR_SLOT_R = (6.0, 15.5)      # 4 radial slots (a cross) take any 4-hole pattern from 12 to 31 mm, incl. the listed 16 / 19 mm
+MOTOR_SLOT_ANGLES = (0, 90, 180, 270)
+MOTOR_VENTS = (15.0, 7.0)       # 4 cooling holes on the diagonals (radius, dia): air comes up through the pocket into the motor base
+MOTOR_CENTER_HOLE_D = 9.0       # 4 mm shaft end + circlip poke out under the motor base
 SCREW_CLEAR_D = 3.4             # M3 clearance hole
 INSERT_HOLE_D = 4.2             # hole for M3 heat-set insert (check your insert's datasheet; 4.0-4.3 typical)
 INSERT_DEPTH = 6.0              # for M3 x 5.7 mm inserts
-ESC_L, ESC_W, ESC_T = 52.0, 26.0, 12.0   # 30 A OPTO ESC body with clearance (from listing photos; verify)
+ESC_SEAT = (71.0, 1.0)          # flat seat for the ESC across the full arm width (length, depth); zip ties locate it
 ESC_R = 250.0                   # ESC centre radius (under the prop disc for cooling)
-ESC_POCKET_DEPTH = 1.5
 ZIP_SLOT = (4.0, 2.4)           # zip-tie slot through the arm (x, z)
 WIRE_GROOVE = (12.0, 7.0)       # top wire channel (width, depth) from the ESC back to the root: 2 x 16 AWG + signal
 JOINT_BOLTS = ((12.0, 9.5), (30.0, -9.5))  # arm-to-body bolts (x from the arm root, y): beside the wire channel, not through it
-LIGHTEN_SPANS = ((48.0, 80.0), (110.0, 132.0), (186.0, 222.0))  # web slots between the body and the ESC, and ESC to motor (from the root)
+LIGHTEN_SPANS = ((48.0, 80.0), (110.0, 132.0), (192.0, 222.0))  # web slots between the body and the ESC, and ESC to motor (from the root)
 
 # --- Central body (1 part) -----------------------------------------------------
 FLOOR = 5.0                     # base thickness (also the tunnel floor)
@@ -78,10 +79,27 @@ MAST_L = 100.0                  # 20 mm sits in the socket
 MAST_BORE_D = 8.0               # cable bore: a JST-SH 6-pin plug (~7 mm wide) fits through
 GPS_PLATE = 30.0                # SEQURE M10-252Q is 25 x 25 mm, 182Q is 18 x 18 mm (SEQURE store)
 
+# --- Bought parts: real sizes ------------------------------------------------------
+# Source tags: [L] product listing in your sheet (5010 motor + 30 A ESC set, AliExpress 3256808405937047)
+#              [R] retailer listing for the same ESC model   [P] measured from the listing photos   [E] estimate
+MOTOR_STATOR = (50.0, 10.0)     # [L] "Motor size: 50*10mm" (stator), "5010-14 360KV"
+MOTOR_SHAFT_D = 4.0             # [L] "Shaft size: 4mm"
+MOTOR_MOUNT = (16.0, 19.0)      # [L] "rear threaded mounting holes with both 16 mm and 19mm hole spacings" (a cross)
+MOTOR_MASS = 80.0               # [L] "Weight: 80g"
+MOTOR_BELL_D = 58.0             # [P] ~58 mm (photos scaled from the 4 mm shaft); a 50 mm stator needs ~57 mm or more
+MOTOR_BODY_H = 18.0             # [P] can side ~13-15 mm in the photos plus the base plate; measure yours
+ADAPTER_COLLAR = (20.0, 5.0)    # [P] bullet prop adapter: collar diameter x height
+ADAPTER_BULLET = (16.0, 35.0)   # [P] bullet nut diameter x height above the collar (tip ~40 mm above the motor top)
+PROP_HUB_T = 10.0               # [E] prop hub thickness; the prop sits on the collar
+ESC_L, ESC_W, ESC_T = 68.0, 25.0, 8.7   # [R] ReadytoSky 30A 2-6S OPTO: "68x25x8.7mm (approx.)"; label in your listing photo: "Brushless 30A 2-6S LIPO OPTO"
+ESC_MASS = 30.0                 # [R] 30 g
+BULLET = (3.5, 15.0)            # [L] 3.5 mm bullet connectors (ESC end: female, ~15 mm long)
+MOTOR_SCREW_L = 8.0             # M3 x 8: pad 5 mm + ~3 mm into the motor (thread size not on the listing: check it is M3)
+
 # --- Tool access (for the clearance check) ---------------------------------------
 HEAD_D = 5.5                    # M3 socket-cap head
 TOOL_D = 7.0                    # space kept clear around a head for a hex key / screwdriver tip going in
-BATTERY = (160.0, 52.0, 52.0)   # HOOVO 6S 6200 mAh, approximate (not on the listing): verify with calipers
+BATTERY = (152.0, 48.5, 48.0)   # HOOVO 6S 6200 mAh: 152 x 48.5 x 48 mm (listing)
 STACK_TOP = FLOOR + 8.0 + 22.0  # top of the power board + Kakute stack (estimate)
 
 # --- Material: PETG (typical datasheet values; printed parts are weaker) --------

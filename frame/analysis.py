@@ -14,6 +14,7 @@ from shapely.geometry import Point, Polygon, box
 from shapely import contains_xy, distance
 
 from params import *  # noqa: F403
+from hardware import PROP_Z as PROP_Z_ARM
 
 G = 9.81
 HERE = Path(__file__).parent
@@ -23,8 +24,8 @@ frame_g = sum(p["est_mass_g"] * p["count"] for p in rep["parts"].values())
 # --- Masses (g). Sources: product pages / your sheets; "est" = my estimate -------
 COMPONENTS = {
     "Frame (printed, from CAD volume)": frame_g,
-    "4 x 5010 360KV motor (listing: 80 g)": 4 * 80,
-    "4 x 30 A ESC (est. 25 g)": 4 * 25,
+    "4 x 5010 360KV motor (listing: 80 g)": 4 * MOTOR_MASS,
+    "4 x 30 A OPTO ESC (ReadytoSky listings: 30 g)": 4 * ESC_MASS,
     "4 x 16-inch carbon prop (est. 22 g)": 4 * 22,
     "Kakute H7 v1.5 (8 g, Holybro)": 8,
     "Power board with XT60 (11 g, listing)": 11,
@@ -44,7 +45,8 @@ ARM_LEN = MOTOR_R - ARM_R0
 SUPPORT_X = SOCKET_TIP_R - ARM_R0          # where the arm leaves the body tunnel
 h_at = lambda x: ARM_H_ROOT + (ARM_H_TIP - ARM_H_ROOT) * x / ARM_LEN
 ESC_X = ESC_R - ARM_R0
-GROOVE_END = ESC_X - ESC_L / 2 + 2
+GROOVE_END = ESC_X - ESC_SEAT[0] / 2 + 2
+SEAT_Z = h_at(ESC_X + ESC_SEAT[0] / 2) - ESC_SEAT[1]
 WALLS, INFILL_STIFF = 1.8, 0.2
 
 
@@ -54,8 +56,8 @@ def section(x):
     s = box(-ARM_W / 2, 0, ARM_W / 2, h)
     if x < GROOVE_END:
         s = s.difference(box(-WIRE_GROOVE[0] / 2, h - WIRE_GROOVE[1], WIRE_GROOVE[0] / 2, h + 1))
-    if abs(x - ESC_X) < ESC_L / 2:
-        s = s.difference(box(-ESC_W / 2, h - ESC_POCKET_DEPTH, ESC_W / 2, h + 1))
+    if abs(x - ESC_X) < ESC_SEAT[0] / 2:
+        s = s.difference(box(-ARM_W, SEAT_Z, ARM_W, h + 1))
     for x0, x1 in LIGHTEN_SPANS:
         n = max(1, int((x1 - x0) // 28)); pitch = (x1 - x0) / n
         for k in range(n):
@@ -113,8 +115,8 @@ d_max, _, shape = tip_deflection(T_MAX)
 d_hover, _, _ = tip_deflection(T_HOVER)
 
 # First bending frequency (Rayleigh): tip mass + ESC + distributed arm mass.
-tip_m = (80 + 22 + 8) / 1000                     # motor, prop, pad region (kg)
-esc_m = 25 / 1000
+tip_m = (MOTOR_MASS + 22 + 8) / 1000             # motor, prop, pad region (kg)
+esc_m = ESC_MASS / 1000
 arm_m = rep["parts"]["arm"]["est_mass_g"] / 1000
 d1, x1, shape1 = tip_deflection(1.0)              # shape under 1 N at the tip (mm)
 y_tip = d1
@@ -168,7 +170,7 @@ peak_M = lambda P: max(np.abs(leaf_moments(f * P, P)).max() for f in (-SKID, 0, 
 leaf_sigma = lambda P: peak_M(P) * (LEAF_T / 2) / I_leaf
 P_unit_sigma = leaf_sigma(1.0)                                     # MPa per N (linear)
 leaf_len = _free.sum() * _ds
-ground0 = BATTERY[2] * 0 + (LEG_H - FLOOR - FIT) - BATTERY[2]     # battery-to-ground gap, unloaded
+ground0 = (LEG_H - FLOOR - FIT) - BATTERY[2]     # battery-to-ground gap, unloaded
 sag = (W_N / 4) / k_leg
 
 
@@ -205,10 +207,11 @@ sigma_leaf_side = SKID * P_break * _h / (LEAF_T * LEG_WIDTH ** 2 / 6)
 
 # --- Centre of gravity vs thrust line --------------------------------------------
 cg_items = [  # (mass g, z mm)
-    (frame_g, 18), (4 * 80, ARM_H_TIP + FLOOR + 15), (4 * 25, 30), (4 * 22, ARM_H_TIP + FLOOR + 45),
+    (frame_g, 18), (4 * MOTOR_MASS, FLOOR + FIT + ARM_H_TIP + MOTOR_BODY_H / 2), (4 * ESC_MASS, FLOOR + FIT + SEAT_Z + ESC_T / 2),
+    (4 * 22, FLOOR + FIT + PROP_Z_ARM + PROP_HUB_T / 2),
     (40, 25), (837, -26), (200, -60), (90, 15)]
 cg_z = sum(m * z for m, z in cg_items) / sum(m for m, _ in cg_items)
-prop_z = ARM_H_TIP + FLOOR + 45
+prop_z = FLOOR + FIT + PROP_Z_ARM + PROP_HUB_T / 2
 
 f = lambda v, d=1: f"{v:,.{d}f}"
 ok = lambda s, a: "OK" if s <= a else "TOO HIGH"
@@ -308,7 +311,7 @@ softer and weaker than this model. Each leg is about {f(rep['parts']['leg']['est
 | Item | Value |
 |---|---|
 | Centre of gravity height (z = 0 is the body underside) | {f(cg_z)} mm |
-| Prop plane height (est.) | {f(prop_z)} mm |
+| Prop plane height (motor + adapter sizes in params.py) | {f(prop_z)} mm |
 | CG below the props by | {f(prop_z - cg_z)} mm |
 
 A CG below the prop plane (battery underneath) is stable and easy to tune. Keep the battery
@@ -326,7 +329,8 @@ centred front-to-back: a 10 mm shift moves the CG {f(837 * 10 / AUW_G, 1)} mm.
 - PETG strengths are typical datasheet values; printed parts vary. Weigh and bend-test one arm.
 - Insert pull-out (~{INSERT_PULLOUT:.0f} N for an M3 insert in PETG) is a rough figure; it depends on the insert and print settings.
 - Motor speed is estimated from KV x volts x 0.85; your Motor sheet has no rpm at 22.2 V.
-- ESC and prop weights are estimates (not on their listings).
+- Prop weight is an estimate. The motor's height, can diameter and prop adapter are measured from the listing photos;
+  the ESC size is from a retailer listing for the same model. Measure yours and update `params.py`.
 """
 (HERE / "ANALYSIS.md").write_text(lines)
 print(lines)

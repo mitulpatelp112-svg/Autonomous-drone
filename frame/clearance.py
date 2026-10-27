@@ -14,6 +14,7 @@ from pathlib import Path
 import cadquery as cq
 
 import build_frame as bf
+import hardware as hw
 from params import *  # noqa: F403
 
 HERE = Path(__file__).parent
@@ -40,16 +41,17 @@ def world():
     w = {"body": parts["body"], "mast": bf.place_mast(parts["mast"])}
     bx, by, bz = BATTERY
     w["battery"] = cq.Workplane("XY").box(bx, by, bz, centered=(True, True, False)).translate((0, 0, -bz))
-    pad_top = FLOOR + FIT + ARM_H_TIP
-    h_esc = ARM_H_ROOT + (ARM_H_TIP - ARM_H_ROOT) * (ESC_R - ARM_R0) / (MOTOR_R - ARM_R0)
+    hw_parts = {k: fn() for k, (fn, _) in hw.PARTS.items()}
+    prop = hw.prop_disc()
     for i, ang in enumerate(bf.ARM_ANGLES, 1):
         w[f"arm {i}"] = bf.place_arm(parts["arm"], ang)
         w[f"leg {i}"] = bf.place_leg(parts["leg"], ang)
-        w[f"ESC {i}"] = rot(cq.Workplane("XY").box(ESC_L - 1, ESC_W - 1, ESC_T, centered=(True, True, False))
-                            .translate((ESC_R, 0, FLOOR + FIT + h_esc - ESC_POCKET_DEPTH)), ang)
-        # 5010 motor: ~58 mm bell, ~32 mm tall above the pad (estimate); prop disc above it.
-        w[f"motor {i}"] = rot(cyl(58, 32, (MOTOR_R, 0, pad_top)), ang)
-        w[f"prop {i}"] = rot(cyl(PROP_D, 8, (MOTOR_R, 0, pad_top + 36)), ang)
+        # Real-size bought parts (params.py source tags): motor + adapter, ESC + bullets + leads, zip ties, prop.
+        w[f"motor {i}"] = bf.place_arm(hw_parts["motor"], ang)
+        w[f"ESC {i}"] = bf.place_arm(hw_parts["esc"].union(hw_parts["esc_bullets"]), ang)
+        w[f"ESC leads {i}"] = bf.place_arm(hw_parts["esc_leads"], ang)
+        w[f"zip ties {i}"] = bf.place_arm(hw_parts["zip_ties"], ang)
+        w[f"prop {i}"] = bf.place_arm(prop, ang)
     return parts, w
 
 
@@ -60,7 +62,7 @@ def overlap(a, b):
     return a.val().intersect(b.val()).Volume()
 
 
-def corridors():
+def corridors(w_ref):
     """(group, what it checks, solid, names of solids it must not touch; None = everything)."""
     out = []
     h = BODY_H
@@ -88,13 +90,25 @@ def corridors():
                         rot(cyl(TOOL_D, REACH, (p[0], 0, z_cb - 3), (0, 0, -1)), ang), None))
             out.append(("Heat-set inserts (soldering iron from below)", f"{tag}: leg insert in arm underside",
                         rot(cyl(10, 60, (LEG_R + dx, 0, FLOOR + FIT), (0, 0, -1)), ang), [tag, "body", "battery"]))
-        # Motor screws: up through the pad from inside the pocket. Worst case = outer end of each slot.
+        # Motor screws: up through the pad from inside the pocket, at the listed 16 / 19 mm holes and at
+        # both ends of every slot (any other motor pattern lands somewhere in between).
         pad_bottom = FLOOR + FIT + ARM_H_TIP - PAD_T
-        for k in range(0, 360, 45):
-            for r in (MOTOR_SLOT_R[0], MOTOR_SLOT_R[1]):
-                p = (MOTOR_R + r * math.cos(math.radians(k)), r * math.sin(math.radians(k)), pad_bottom)
-                out.append(("Motor screws (M3, from under the pad)", f"{tag}: slot {k} deg, r = {r} mm",
-                            rot(cyl(HEAD_D, REACH, p, (0, 0, -1)), ang), None))
+        pts = [(px + ARM_R0, py, "listed hole") for px, py in hw.motor_screw_points()]
+        pts += [(MOTOR_R + r * math.cos(math.radians(k)), r * math.sin(math.radians(k)), f"slot {k} deg, r = {r}")
+                for k in MOTOR_SLOT_ANGLES for r in MOTOR_SLOT_R]
+        for x, y, what in pts:
+            out.append(("Motor screws (M3, from under the pad)", f"{tag}: {what}",
+                        rot(cyl(HEAD_D, REACH, (x, y, pad_bottom), (0, 0, -1)), ang), None))
+            if what == "listed hole":
+                out.append(("Motor screws (M3, from under the pad)", f"{tag}: screw line through the pad slot",
+                            rot(cyl(3.0, PAD_T, (x, y, pad_bottom)), ang), [tag]))
+        # Bought parts sitting on the arm: nothing may overlap the arm or each other.
+        for part in ("motor", "ESC", "ESC leads", "zip ties"):
+            out.append(("Motor, ESC and wiring on the arm", f"{tag}: {part} vs arm", w_ref[f"{part} {i}"], [tag]))
+        out.append(("Motor, ESC and wiring on the arm", f"{tag}: ESC + bullets vs motor", w_ref[f"ESC {i}"], [f"motor {i}"]))
+        out.append(("Motor, ESC and wiring on the arm", f"{tag}: ESC leads vs body (pass under the roof)", w_ref[f"ESC leads {i}"], ["body"]))
+        out.append(("Motor, ESC and wiring on the arm", f"{tag}: prop vs ESC and zip ties", w_ref[f"prop {i}"],
+                    [f"ESC {i}", f"zip ties {i}"]))
         # ESC wires: along the top channel, under the roof, through the bulkhead opening, down into the bay.
         floor0 = FLOOR + FIT + ARM_H_ROOT - gd + 0.3     # channel floor at the root (world z)
         bundle_h = 5.5                                   # 2 x 16 AWG silicone (~2.9 mm) + signal lead
@@ -169,7 +183,7 @@ def walls():
 def run():
     parts, w = world()
     results = []
-    for group, what, solid, only in corridors():
+    for group, what, solid, only in corridors(w):
         names = only if only is not None else list(w)
         hits = {n: overlap(solid, w[n]) for n in names}
         bad = {n: round(v, 1) for n, v in hits.items() if v > 0.05}
@@ -177,7 +191,7 @@ def run():
     # Part-to-part: printed parts and hardware must not touch except where they are meant to sit.
     pairs = [("mast", "battery"), ("mast", "prop 2"), ("mast", "prop 3"), ("body", "battery")]
     for i in range(1, 5):
-        pairs += [(f"leg {i}", "battery"), (f"prop {i}", "body"), (f"prop {i}", f"ESC {i}"), (f"arm {i}", "battery")]
+        pairs += [(f"leg {i}", "battery"), (f"prop {i}", "body"), (f"prop {i}", "mast"), (f"arm {i}", "battery")]
         pairs += [(f"prop {i}", f"prop {j}") for j in range(i + 1, 5)]
     for a, b in pairs:
         v = overlap(w[a], w[b])
@@ -195,7 +209,7 @@ def run():
              "Generated by `frame/clearance.py` from the CAD. Each tool path is a straight cylinder from the screw head",
              f"outward ({REACH:.0f} mm, a full screwdriver), {TOOL_D:.0f} mm wide for an M3 head ({HEAD_D} mm) plus the driver tip.",
              "Cable and strap paths are boxes the size of the bundle. Each is intersected with every printed part, the battery",
-             f"({BATTERY[0]:.0f} x {BATTERY[1]:.0f} x {BATTERY[2]:.0f} mm, estimated), the ESCs, the motors and the prop discs. Pass = 0 mm³ overlap.", "",
+             f"({BATTERY[0]:.0f} x {BATTERY[1]} x {BATTERY[2]:.0f} mm, from its listing), the motors with prop adapters, the ESCs with their bullets, leads and zip ties, and the prop discs, at the sizes in params.py. Pass = 0 mm³ overlap.", "",
              "| Check | Paths | Result |", "|---|---|---|"]
     fails = 0
     for g, items in groups.items():

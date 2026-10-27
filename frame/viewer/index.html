@@ -9,6 +9,7 @@
   --bg: #e9edee; --panel: #ffffff; --ink: #141a1d; --muted: #5a666a; --line: #d0d8da; --sunk: #f3f6f7;
   --accent: #0d6b7a; --accent-ink: #ffffff; --stage: #dfe5e7; --grid: #c3ccce;
   --c-body: #3a4248; --c-arm: #157887; --c-leg: #8b949a; --c-sel: #e07a1f;
+  --c-motor: #aeb6bc; --c-esc: #23272b; --c-gold: #c09a2a; --c-wire: #b23a2e; --c-tie: #eceff1; --c-batt: #44527a; --c-steel: #2c3135;
   --f-display: "Chakra Petch", "Bahnschrift", "Segoe UI", sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -16,11 +17,13 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
   --accent: #3eb1c2; --accent-ink: #062126; --stage: #12191c; --grid: #24302f;
-  --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a; color-scheme: dark } }
+  --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a;
+  --c-motor: #c3cacf; --c-esc: #4a5056; --c-gold: #d7b142; --c-wire: #d0544a; --c-tie: #dfe3e6; --c-batt: #6474a0; --c-steel: #8a9298; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
   --accent: #3eb1c2; --accent-ink: #062126; --stage: #12191c; --grid: #24302f;
-  --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a; color-scheme: dark }
+  --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a;
+  --c-motor: #c3cacf; --c-esc: #4a5056; --c-gold: #d7b142; --c-wire: #d0544a; --c-tie: #dfe3e6; --c-batt: #6474a0; --c-steel: #8a9298; color-scheme: dark }
 
 html, body { height: 100%; }
 [hidden] { display: none !important; }
@@ -78,6 +81,7 @@ dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-
     </div>
     <div class="tools">
       <label for="explode">Explode <input id="explode" type="range" min="0" max="100" value="0"></label>
+      <label for="hw"><input id="hw" type="checkbox" checked> Motors, ESCs &amp; battery</label>
       <label for="props"><input id="props" type="checkbox" checked> Prop discs</label>
       <label for="box"><input id="box" type="checkbox" checked> Size box</label>
       <button id="reset" type="button">Reset view</button>
@@ -133,8 +137,8 @@ const SPECS = {
   ], print: "Floor down, as modelled. Tunnel roofs bridge 28.5 mm; no supports." },
   arm: { title: "Arm", qty: 4, groups: [
     ["Envelope", [["Root to motor centre", "250"], ["Overall length", "273"], ["Width", "28"], ["Height (root → tip)", "28 → 20"]]],
-    ["Motor pad", [["Diameter", "Ø46"], ["Thickness", "6"], ["Screw slots (8)", "r 7.5–15.5, 3.4 wide"], ["Centre hole", "Ø12"], ["Fits", "5010 · 16 mm / 19 mm patterns"]]],
-    ["ESC mount", [["Recess", "52 × 26 × 1.5"], ["Recess centre radius", "250 from frame centre"], ["Zip-tie slots (2)", "4 × 2.4"], ["Wire channel", "12 W × 7 D"]]],
+    ["Motor pad", [["Diameter", "Ø46 + level landing for the Ø58 motor base"], ["Thickness", "5"], ["Screw slots (4, a cross)", "r 6–15.5, 3.4 wide"], ["Cooling vents", "4 × Ø7 on the diagonals"], ["Centre hole", "Ø9 (shaft end + circlip)"], ["Fits", "listed 16 / 19 mm pairs; any 12–31 mm pattern"]]],
+    ["ESC mount", [["Seat", "71 long, flat, full width (ESC 68 × 25 × 8.7)"], ["Seat centre radius", "250 from frame centre"], ["Zip-tie slots (2)", "4 × 2.4"], ["Wire channel", "12 W × 7 D"]]],
     ["Joints", [["Body bolts (x from root, y)", "(12, +9.5) and (30, −9.5)"], ["Leg inserts (radius)", "170 and 200"], ["Pocket under motor pad", "Ø38 × 14"], ["Lightening slots", "3 spans through the web"]]],
     ["Load check (full thrust 17.1 N)", [["Moment at body exit", "3.53 N·m"], ["Peak stress", "2.2 MPa (limit 15)"], ["Tip deflection hover / max", "0.45 / 1.37"], ["First bending frequency", "~48 Hz"]]],
   ], print: "Flat side down, diagonally on the bed (209.7 mm footprint). 4 walls." },
@@ -148,7 +152,36 @@ const SPECS = {
     ["Fits", [["SEQURE M10-252Q", "25 × 25 (M10-182Q: 18 × 18)"], ["Lock screw", "M3 from the back, on a flat"]]],
   ], print: "Upside down: GPS plate on the bed, tube standing up." },
 };
-const COLORS = { body: "--c-body", arm: "--c-arm", leg: "--c-leg", mast: "--c-leg" };
+const COLORS = { body: "--c-body", arm: "--c-arm", leg: "--c-leg", mast: "--c-leg", motor: "--c-motor", motor_screws: "--c-steel",
+  esc: "--c-esc", esc_bullets: "--c-gold", motor_leads: "--c-wire", esc_leads: "--c-wire", zip_ties: "--c-tie", battery: "--c-batt" };
+// Bought parts. Sources: [listing] = the motor + ESC set linked in your sheet; [retailer] = another listing of the
+// same ESC model; [photo] = measured from the listing photos (scaled from the 4 mm shaft): verify with calipers.
+const HW = {
+  motor: { title: "5010-14 360KV motor", qty: 4, mass: 80, groups: [
+    ["From the listing", [["Stator", "50 × 10 (the \"5010\")"], ["KV", "360 rpm/V"], ["Shaft", "Ø4"], ["Mounting holes", "threaded, 16 mm and 19 mm spacing"], ["Weight", "80 g"], ["Battery / ESC", "2–6S / 20–40 A (30 A best)"], ["Props", "12–16 in"]]],
+    ["Measured from the listing photos (verify)", [["Can diameter", "~58"], ["Body height", "~18"], ["Prop adapter", "bullet: Ø20 collar, Ø16 nut, tip ~40 above the motor"], ["Base", "spoked, open for cooling; shaft end + circlip below"]]],
+    ["On this frame", [["Sits on", "5 mm pad + level landing (base overhangs the Ø46 pad)"], ["Screws", "4 × M3 × 8 from below"], ["Reach into the motor", "~3 mm"], ["Pad slots", "cross, r 6–15.5: any 12–31 mm 4-hole pattern"], ["Cooling", "4 × Ø7 vents + open pocket below"], ["Prop hub sits at", "~53 above the body underside"]]],
+  ], mount: "Turn the motor until its 4 holes sit over the cross of slots, wires pointing toward the body. Screw in from under the arm through the pocket (2.5 mm hex key, straight up). Before that, push a toothpick into a motor hole and mark it: the hole must be at least 3.5 mm deep for an 8 mm screw, or the screw can reach the windings." },
+  esc: { title: "30 A OPTO ESC", qty: 4, mass: 30, groups: [
+    ["From the listing", [["Current", "30 A, 40 A for 10 s"], ["Input", "2–6S LiPo"], ["BEC", "none (OPTO)"], ["Motor end", "3 × 3.5 mm female bullets"], ["Signal", "twisted pair to a servo plug, up to 621 Hz"]]],
+    ["Size (retailer listing of the same model, approx.)", [["Body", "68 × 25 × 8.7"], ["Weight", "30 g"]]],
+    ["On this frame", [["Seat", "71 long, flat, full arm width"], ["Held by", "2 zip ties ≤ 3.6 mm wide, through the arm"], ["Position", "centre 250 from the frame centre, under the prop wash"], ["Gap to motor", "bullets + ~12 mm of motor lead"]]],
+  ], mount: "Bullet end toward the motor; red/black power leads and the signal pair toward the body. Lay the leads in the 12 × 7 channel: they run under the body roof and drop into the bay. Two zip ties through the slots in the arm, over the ESC." },
+  motor_screws: { title: "Motor screws", qty: 16, groups: [["Spec", [["Size", "M3 × 8 socket cap, 4 per motor"], ["Thread", "M3 assumed (not on the listing)"], ["Through", "5 mm pad"], ["Into the motor", "~3 mm"]]]],
+    mount: "From below, through the open pocket under the pad. The clearance check confirms a straight driver reaches every slot position." },
+  esc_bullets: { title: "3.5 mm bullet connectors", qty: 12, groups: [["Spec", [["Size", "3.5 mm, ~15 long"], ["Where", "ESC motor end ↔ motor phase leads"]]]],
+    mount: "Plug the motor's 3 leads into the ESC's 3 bullets. If the motor spins the wrong way, swap any two (or reverse it in the ESC settings)." },
+  motor_leads: { title: "Motor phase leads", qty: 4, groups: [["Spec", [["Wires", "3 (from the motor base)"], ["Run", "~12 mm on the arm top to the ESC bullets"]]]],
+    mount: "Shorten them if they are long, and tuck the slack under the ESC zip tie so it can't reach the prop." },
+  esc_leads: { title: "ESC power + signal leads", qty: 4, groups: [["Spec", [["Power", "red + black to the power board pads"], ["Signal", "twisted pair to the Kakute (cut the servo plug, solder to the 8-pin JST-SH lead)"], ["Route", "12 × 7 channel → under the roof → 18 mm opening → bay"]]]],
+    mount: "Lay them in the channel before sliding the arm into the body; they come out through the opening at the end of the tunnel." },
+  zip_ties: { title: "Zip ties", qty: 8, groups: [["Spec", [["Width", "≤ 3.6 mm (slot 4 × 2.4)"], ["Per ESC", "2"]]]],
+    mount: "Through the slot under the ESC, up both sides of the arm, over the ESC. Snug, not crushing." },
+  battery: { title: "HOOVO 6S 6200 mAh", qty: 1, mass: 837, groups: [["From the listing", [["Size", "152 × 48.5 × 48"], ["Weight", "837 g"], ["Plug", "EC5 (adapter to the XT60 power board)"], ["Balance", "JST-XH 7-pin"]]],
+    ["On this frame", [["Held by", "2 × 20 mm Velcro straps through the floor slots"], ["Ground clearance", "~50 resting"]]]],
+    mount: "Long side front to back, centred under the body. Straps through the floor slots and across the bay floor." },
+};
+const LIFT = { motor: 0.75, motor_screws: -0.45, esc: 0.4, esc_bullets: 0.4, motor_leads: 0.55, esc_leads: 0.15, zip_ties: 0.6, battery: -0.7 };
 
 // ---------- scene ----------
 const canvas = $("view"), stage = $("stage");
@@ -203,17 +236,18 @@ async function load() {
     mesh.matrixAutoUpdate = false; mesh.matrix.copy(base); mesh.userData.id = inst.id;
     scene.add(mesh);
     const ang = THREE.MathUtils.degToRad(inst.angle ?? 0);
-    const dir = inst.geo === "arm" ? new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0)
+    const dir = inst.hw ? (inst.arm ? new THREE.Vector3(Math.cos(ang), Math.sin(ang), LIFT[inst.geo] ?? 0) : new THREE.Vector3(0, 0, LIFT[inst.geo] ?? 0))
+      : inst.geo === "arm" ? new THREE.Vector3(Math.cos(ang), Math.sin(ang), 0)
       : inst.geo === "leg" ? new THREE.Vector3(Math.cos(ang) * 0.6, Math.sin(ang) * 0.6, -1)
       : inst.geo === "mast" ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3();
-    parts.push({ id: inst.id, geo: inst.geo, label: inst.label || SPECS[inst.geo].title, mesh, base, dir });
+    parts.push({ id: inst.id, geo: inst.geo, hw: !!inst.hw, label: inst.label || (SPECS[inst.geo] || HW[inst.geo]).title, mesh, base, dir });
   }
   // Prop discs at the motors.
   for (const inst of DATA.instances.filter((i) => i.geo === "arm")) {
     const a = THREE.MathUtils.degToRad(inst.angle);
     const disc = new THREE.Mesh(new THREE.RingGeometry(10, DATA.propD / 2, 64),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }));
-    disc.position.set(Math.cos(a) * DATA.motorR, Math.sin(a) * DATA.motorR, DATA.padTop + 45);
+    disc.position.set(Math.cos(a) * DATA.motorR, Math.sin(a) * DATA.motorR, DATA.propZ ?? DATA.padTop + 45);
     disc.userData.arm = inst.id; disc.raycast = () => {};
     propGroup.add(disc);
   }
@@ -240,18 +274,20 @@ function setExplode(v) {
     const p = parts.find((q) => q.id === d.userData.arm);
     const a = Math.atan2(p.dir.y, p.dir.x);
     d.position.x = Math.cos(a) * (DATA.motorR + 90 * v); d.position.y = Math.sin(a) * (DATA.motorR + 90 * v);
+    d.position.z = (DATA.propZ ?? DATA.padTop + 45) + 90 * v * LIFT.motor;
   });
   updateBox(); reportPins();
 }
 $("explode").addEventListener("input", (e) => setExplode(e.target.value / 100));
 $("props").addEventListener("change", (e) => (propGroup.visible = e.target.checked));
+$("hw").addEventListener("change", (e) => { for (const p of parts) if (p.hw) p.mesh.visible = e.target.checked; if (selected?.hw && !e.target.checked) select(null); });
 $("box").addEventListener("change", updateBox);
 
 // ---------- selection + details ----------
 function buildList() {
   const seen = new Set();
-  $("parts").innerHTML = parts.map((p) => {
-    const r = DATA.report.parts[p.geo];
+  $("parts").innerHTML = parts.filter((p) => !p.hw || ["motor", "esc", "battery"].includes(p.geo)).map((p) => {
+    const r = DATA.report.parts[p.geo] || (HW[p.geo]?.mass ? { est_mass_g: HW[p.geo].mass } : null);
     return `<li><button type="button" data-id="${p.id}" aria-pressed="false"><span class="swatch" style="background:var(${COLORS[p.geo]})"></span>${esc(p.label)}<span class="m">${r ? `~${Math.round(r.est_mass_g)} g` : ""}</span></button></li>`;
   }).join("");
 }
@@ -288,14 +324,15 @@ function select(p, hit, frame) {
   if (!p) { $("detail").innerHTML = `<span class="eyebrow">Selected part</span><p class="empty">Click any part of the frame to see its dimensions.</p>`; updateBox(); return; }
   p.mesh.material.emissive = new THREE.Color(css("--c-sel")).multiplyScalar(0.55);
   lastHit = hit;
-  const s = SPECS[p.geo], r = DATA.report.parts[p.geo];
+  const s = SPECS[p.geo] || HW[p.geo], r = DATA.report.parts[p.geo];
   const bb = p.mesh.geometry.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
-  const rows = [["Measured from the model", [["Bounding box (L × W × H)", `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)}`],
+  const rows = p.hw ? [["Bought part", [["Quantity", `${s.qty}`], ...(s.mass ? [["Weight each", `${s.mass} g`]] : [])]], ...s.groups]
+    : [["Measured from the model", [["Bounding box (L × W × H)", `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)}`],
     ["Est. mass", `${r.est_mass_g} g`], ["Quantity", `${s.qty}`], ["Print footprint", `${r.footprint_mm[0]} × ${r.footprint_mm[1]}`], ["Fits 220 mm bed", r.fits_bed ? "Yes" : "No"]]], ...s.groups];
   const where = hit ? `<p class="note">Clicked at ${hit.region}: x ${hit.local.x.toFixed(1)}, y ${hit.local.y.toFixed(1)}, z ${hit.local.z.toFixed(1)} mm</p>` : "";
   $("detail").innerHTML = `<span class="eyebrow">Selected part · all sizes in mm</span><h2>${esc(p.label)}</h2>${where}
     <dl class="dims">${rows.map(([g, kv]) => `<div class="kv-group">${esc(g)}</div>` + kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")).join("")}</dl>
-    <p class="note"><b>Print:</b> ${esc(s.print)}</p>
+    <p class="note"><b>${p.hw ? "How it mounts" : "Print"}:</b> ${esc(p.hw ? s.mount : s.print)}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" type="button" id="comment-btn" ${canComment() ? "" : "hidden"}>Comment on this ${hit ? "spot" : "part"}</button></div>
     <p class="status" id="comment-status"></p>`;
   $("comment-btn")?.addEventListener("click", (e) => startComment(p, lastHit, e.currentTarget));
@@ -310,6 +347,7 @@ function restoreHash() {
 
 // Where on a part a point is, in words (used in comment labels).
 function regionOf(p, local) {
+  if (p.hw) return HW[p.geo].title;
   if (p.geo === "arm") {
     const x = local.x;               // distance from the arm root
     return x < 43 ? "root (inside the body socket)" : x < 135 ? "inner span" : x < 186 ? "ESC mount" : x < 225 ? "outer span" : "motor pad";
@@ -381,7 +419,7 @@ function reportPins() {
 function setStatus(msg) { const s = $("comment-status"); if (s) s.textContent = msg; }
 
 async function startComment(p, hit, btn) {
-  const s = SPECS[p.geo];
+  const s = SPECS[p.geo] || HW[p.geo];
   const label = (`${p.label}${hit ? ", " + hit.region : ""}`).slice(0, 120);
   const detail = (`${s.title}. ` + s.groups.slice(0, 2).map(([g, kv]) => g + ": " + kv.map(([k, v]) => `${k} ${v}`).join("; ")).join(". ")).slice(0, 1000);
   try {

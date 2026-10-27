@@ -14,8 +14,8 @@
   },
   "arm": {
    "count": 4,
-   "solid_volume_cm3": 141.1,
-   "est_mass_g": 89.6,
+   "solid_volume_cm3": 139.1,
+   "est_mass_g": 88.3,
    "print_rotation_deg": 45,
    "footprint_mm": [
     209.7,

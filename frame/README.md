@@ -37,6 +37,27 @@ Frame total about 678 g (estimated with 4 walls + 25–30% infill; weigh your fi
 25–30% gyroid infill, no supports (enable bridging). Arms rely mostly on their walls, so
 don't drop below 4 walls.
 
+## Motor and ESC: real sizes and how they mount
+
+![Motor and ESC mount](out/motor_mount.png)
+
+| Part | Size | Source |
+|---|---|---|
+| 5010-14 360KV motor | stator 50 × 10, Ø4 shaft, 80 g, threaded mounting holes at 16 mm and 19 mm spacing | listing in your sheet |
+| | can ~Ø58 × 18 tall; bullet prop adapter ~Ø20 collar, tip ~40 above the motor top | measured from the listing photos: **check with calipers** |
+| 30 A OPTO ESC (2–6S, no BEC, 3.5 mm bullets) | 68 × 25 × 8.7, 30 g | retailer listing for the same ReadytoSky model (approx.) |
+| HOOVO 6S 6200 mAh | 152 × 48.5 × 48, 837 g | listing |
+
+- **Motor:** sits on a 5 mm pad with a level landing (its base is wider than the pad). Turn it until its 4 holes sit over the
+  cross of slots (they take any 4-hole pattern from 12 to 31 mm), wires toward the body, and screw in **4 × M3 × 8** from
+  underneath through the open pocket. That puts ~3 mm of thread in the motor: push a toothpick into a motor hole first and
+  make sure it is at least 3.5 mm deep, so the screw can't reach the windings. The thread size isn't on the listing; M3 is
+  the norm for this motor size, so check one screw before buying more. Four Ø7 vents let the motor pull cooling air
+  up through the pocket.
+- **ESC:** sits on a flat 71 mm seat on the arm, bullet end toward the motor, held by 2 zip ties (≤ 3.6 mm) through the arm.
+  The 3 motor leads plug into its 3.5 mm bullets; the red/black power leads and the signal pair go back along the
+  12 × 7 channel into the body. The prop sweeps right over it, which cools it.
+
 ## Hardware
 
 | Item | Qty | Where |
@@ -46,7 +67,7 @@ don't drop below 4 walls.
 | M3 × 8 bolt | 8 | Legs: through the leg pad into the arm inserts |
 | M3 × 10 bolt or grub screw | 1 | Mast lock, from the back of the mast boss |
 | M3 × 20 bolt + nylon spacers | 4 | Power board + Kakute stack into the standoff inserts (check stack height) |
-| Motor screws (M3) | 16 | From under each pad into the motor. Must not reach the windings: pad is 6 mm, so use 8–10 mm screws (check the motor's thread depth) |
+| M3 × 8 motor screws | 16 | From under each pad into the motor (5 mm pad + ~3 mm into the motor; check the motor's hole depth) |
 | Zip ties, ≤ 3.6 mm wide | 8 | Two per ESC, through the slots in the arm |
 | 20 mm Velcro battery straps | 2 | Through the slots in the body floor |
 
@@ -57,9 +78,9 @@ The insert holes are 4.2 mm (`INSERT_HOLE_D`). If your inserts call for a differ
 1. **Inserts.** Melt them in with a soldering iron at about 220–240 °C, flush with the surface:
    8 into the top of the body (the holes above each tunnel), 4 into the stack standoffs, 2 into
    the underside of each arm (leg mount), 1 into the back of the mast boss.
-2. **Motors.** Bolt each motor onto its arm pad from underneath. The pad has radial slots, so
-   it takes the motor's 16 mm and 19 mm screw patterns. Point the motor wires toward the body.
-3. **ESCs.** Each ESC sits in the recess on top of its arm and is held by two zip ties through the slots.
+2. **Motors.** Bolt each motor onto its arm pad with 4 × M3 × 8 from underneath. The cross of slots takes the
+   motor's 16 mm and 19 mm hole pairs (any 12–31 mm pattern). Point the motor wires toward the body.
+3. **ESCs.** Each ESC sits on the flat seat on top of its arm, bullet end toward the motor, held by two zip ties through the slots.
    Solder the motor bullets; run the ESC power and signal wires back along the top channel (12 × 7 mm) to the root.
    The two arm bolts sit either side of the channel, so the wires never have to go round a bolt.
 4. **Arms into the body.** Slide each arm root into its tunnel. The wires come out of the channel through the
