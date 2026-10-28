@@ -53,7 +53,8 @@ if __name__ == "__main__":
     inst.append({"id": "battery", "geo": "battery", "label": "Battery (HOOVO 6S 6200)", "hw": True, "m": placement(0, 0, 0, 0)})
     rep = json.loads((Path(__file__).parent / "out" / "report.json").read_text())
     clear = json.loads((Path(__file__).parent / "out" / "clearance.json").read_text())
-    data = {"geometries": geo, "instances": inst, "report": rep, "clearance": clear,
+    lift = json.loads((Path(__file__).parent / "out" / "lift.json").read_text())
+    data = {"geometries": geo, "instances": inst, "report": rep, "clearance": clear, "lift": lift,
             "motorR": MOTOR_R, "propD": PROP_D, "padTop": FLOOR + FIT + ARM_H_TIP, "propZ": FLOOR + FIT + hw.PROP_Z + PROP_HUB_T / 2}
     (OUT / "model.json").write_text(json.dumps(data))
     print({k: (g["verts"], g["tris"]) for k, g in geo.items()}, round((OUT / "model.json").stat().st_size / 1e6, 2), "MB")

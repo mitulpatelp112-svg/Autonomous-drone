@@ -126,4 +126,32 @@ centred front-to-back: a 10 mm shift moves the CG 3.5 mm.
 - PETG strengths are typical datasheet values; printed parts vary. Weigh and bend-test one arm.
 - Insert pull-out (~500 N for an M3 insert in PETG) is a rough figure; it depends on the insert and print settings.
 - Motor speed is estimated from KV x volts x 0.85; your Motor sheet has no rpm at 22.2 V.
-- ESC and prop weights are estimates (not on their listings).
+- Prop weight is an estimate. The motor's height, can diameter and prop adapter are measured from the listing photos;
+  the ESC size is from a retailer listing for the same model. Measure yours and update `params.py`.
+
+## Lift capacity
+
+From your Motor sheet (CF16x5.5 at 22.2 V): 1740 g per motor at 12.5 A, so **6.96 kg** of thrust from all
+four at full throttle, drawing about 50 A. Empty weight (everything but the payload) is 2,167 g.
+
+**The power board is the limit, not the motors.** It is rated 25 A continuous / 30 A burst (from its listing), and all
+four ESCs draw through it. At 30 A the motors make only about **5.08 kg** (4.52 kg at 25 A). Full throttle
+(50 A) would overload it. Either keep throttle (and so payload) inside its rating, or wire the ESC power leads to a
+board or harness rated for at least 70 A to unlock the motors' full thrust.
+
+| Max payload | With this power board (5.08 kg usable thrust) | With a 70 A+ board (6.96 kg) |
+|---|---|---|
+| Thrust-to-weight 2.0 (responsive, recommended) | **372 g** | **1,313 g** |
+| Thrust-to-weight 1.6 (calm air only, sluggish) | 1,006 g | 2,183 g |
+
+| Payload | All-up weight | Thrust-to-weight (board / motors) | Hover thrust, % of max | Hover current (board limit 25 A) | Hover time (80% of 6200 mAh) | Hard landing limit for the legs |
+|---|---|---|---|---|---|---|
+| 0 g | 2,167 g | 2.34 / 3.21 | 31% | 8.7 A | 34 min | 1.27 m/s |
+| 200 g | 2,367 g | 2.14 / 2.94 | 34% | 9.3 A | 32 min | 1.21 m/s |
+| 500 g | 2,667 g | 1.90 / 2.61 | 38% | 11.4 A | 26 min | 1.14 m/s |
+| 1,000 g | 3,167 g | 1.60 / 2.20 | 46% | 15.0 A | 20 min | 1.05 m/s |
+| 1,313 g | 3,480 g | 1.46 / 2.00 | 50% | 17.3 A | 17 min | 1.00 m/s |
+
+Hover time is the motor sheet's hover current plus 5 W of avionics, no wind or manoeuvring: real flights get less.
+The spring legs were sized for the 200 g mission payload; heavier loads lower the touchdown speed they can take
+without bending for good (last column). The arms are unaffected by payload: their worst case is full motor thrust.

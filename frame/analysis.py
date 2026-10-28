@@ -332,5 +332,64 @@ centred front-to-back: a 10 mm shift moves the CG {f(837 * 10 / AUW_G, 1)} mm.
 - Prop weight is an estimate. The motor's height, can diameter and prop adapter are measured from the listing photos;
   the ESC size is from a retailer listing for the same model. Measure yours and update `params.py`.
 """
+# --- Lift capacity -------------------------------------------------------------------
+_cg, _ci = zip(*MOTOR_CURVE)
+amps_for = lambda g: float(np.interp(g, _cg, _ci))            # per motor, within the tested range
+grams_for = lambda a: float(np.interp(a, _ci, _cg))
+I_AV = AVIONICS_W / VOLTS
+EMPTY_G = AUW_G - MISSION_PAYLOAD                              # everything except the payload
+T_MOTORS = 4 * _cg[-1]                                         # full throttle, all 4 motors
+T_PDB_CONT = 4 * grams_for((PDB_AMPS[0] - I_AV) / 4)          # most thrust the power board can feed continuously
+T_PDB_BURST = 4 * grams_for((PDB_AMPS[1] - I_AV) / 4)
+I_FULL = 4 * _ci[-1] + I_AV
+
+
+def lift_case(payload):
+    auw = EMPTY_G + payload
+    hover = auw / 4
+    i = 4 * amps_for(hover) + I_AV if hover <= _cg[-1] else float("nan")
+    leg_v = LAND_V_HARD * math.sqrt(AUW_G / auw) * LEAF_STRESS_MAX / cases[2]["sigma"]
+    return {"payload": payload, "auw": auw, "tw_motors": T_MOTORS / auw, "tw_pdb": T_PDB_BURST / auw,
+            "hover_pct": 100 * hover / _cg[-1], "amps": i, "minutes": BATT_MAH / 1000 * BATT_USABLE / i * 60 if i == i else 0,
+            "leg_v": leg_v}
+
+
+payload_tw2_motors = T_MOTORS / TW_GOOD - EMPTY_G
+payload_tw2_pdb = T_PDB_BURST / TW_GOOD - EMPTY_G
+payload_twmin_pdb = T_PDB_BURST / TW_MIN - EMPTY_G
+payload_twmin_motors = T_MOTORS / TW_MIN - EMPTY_G
+lift_rows = [lift_case(p) for p in (0, MISSION_PAYLOAD, 500, 1000, max(payload_tw2_motors, 0))]
+lift = {"curve": MOTOR_CURVE, "empty_g": EMPTY_G, "mission_g": MISSION_PAYLOAD, "auw_ref_g": AUW_G, "volts": VOLTS,
+        "pdb": PDB_AMPS, "i_av": I_AV, "mah": BATT_MAH, "usable": BATT_USABLE, "tw_good": TW_GOOD, "tw_min": TW_MIN,
+        "t_motors": T_MOTORS, "t_pdb_cont": T_PDB_CONT, "t_pdb_burst": T_PDB_BURST, "i_full": I_FULL,
+        "payload_tw2_motors": payload_tw2_motors, "payload_tw2_pdb": payload_tw2_pdb,
+        "payload_twmin_pdb": payload_twmin_pdb, "payload_twmin_motors": payload_twmin_motors,
+        "leg": {"v_hard": LAND_V_HARD, "sigma_hard": cases[2]["sigma"], "sigma_max": LEAF_STRESS_MAX}}
+(HERE / "out" / "lift.json").write_text(json.dumps(lift))
+
+lines += f"""
+## Lift capacity
+
+From your Motor sheet (CF16x5.5 at {VOLTS} V): {_cg[-1]:.0f} g per motor at {_ci[-1]} A, so **{T_MOTORS / 1000:.2f} kg** of thrust from all
+four at full throttle, drawing about {I_FULL:.0f} A. Empty weight (everything but the payload) is {EMPTY_G:,.0f} g.
+
+**The power board is the limit, not the motors.** It is rated {PDB_AMPS[0]:.0f} A continuous / {PDB_AMPS[1]:.0f} A burst (from its listing), and all
+four ESCs draw through it. At {PDB_AMPS[1]:.0f} A the motors make only about **{T_PDB_BURST / 1000:.2f} kg** ({T_PDB_CONT / 1000:.2f} kg at {PDB_AMPS[0]:.0f} A). Full throttle
+({I_FULL:.0f} A) would overload it. Either keep throttle (and so payload) inside its rating, or wire the ESC power leads to a
+board or harness rated for at least {math.ceil(I_FULL * 1.2 / 10) * 10:.0f} A to unlock the motors' full thrust.
+
+| Max payload | With this power board ({T_PDB_BURST / 1000:.2f} kg usable thrust) | With a {math.ceil(I_FULL * 1.2 / 10) * 10:.0f} A+ board ({T_MOTORS / 1000:.2f} kg) |
+|---|---|---|
+| Thrust-to-weight {TW_GOOD:.1f} (responsive, recommended) | **{max(payload_tw2_pdb, 0):,.0f} g** | **{max(payload_tw2_motors, 0):,.0f} g** |
+| Thrust-to-weight {TW_MIN:.1f} (calm air only, sluggish) | {max(payload_twmin_pdb, 0):,.0f} g | {max(payload_twmin_motors, 0):,.0f} g |
+
+| Payload | All-up weight | Thrust-to-weight (board / motors) | Hover thrust, % of max | Hover current (board limit {PDB_AMPS[0]:.0f} A) | Hover time ({BATT_USABLE * 100:.0f}% of {BATT_MAH:.0f} mAh) | Hard landing limit for the legs |
+|---|---|---|---|---|---|---|
+""" + "\n".join(f"| {r['payload']:,.0f} g | {r['auw']:,.0f} g | {r['tw_pdb']:.2f} / {r['tw_motors']:.2f} | {r['hover_pct']:.0f}% | {r['amps']:.1f} A | {r['minutes']:.0f} min | {r['leg_v']:.2f} m/s |" for r in lift_rows) + f"""
+
+Hover time is the motor sheet's hover current plus {AVIONICS_W:.0f} W of avionics, no wind or manoeuvring: real flights get less.
+The spring legs were sized for the {MISSION_PAYLOAD:.0f} g mission payload; heavier loads lower the touchdown speed they can take
+without bending for good (last column). The arms are unaffected by payload: their worst case is full motor thrust.
+"""
 (HERE / "ANALYSIS.md").write_text(lines)
 print(lines)

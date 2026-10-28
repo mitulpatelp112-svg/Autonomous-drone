@@ -115,5 +115,15 @@ SAFETY_FACTOR = 3.0             # for fatigue, vibration, heat and print variati
 THRUST_MAX_G = 1740.0           # 22.2 V, CF16x5.5, highest test point
 CURRENT_MAX_A = 12.5
 POWER_MAX_W = 277.5
+# Thrust curve, CF16x5.5 at 22.2 V, from your Motor sheet: (grams of thrust, amps per motor). 0 g = no-load current.
+MOTOR_CURVE = ((0.0, 0.4), (600.0, 2.3), (1200.0, 6.7), (1740.0, 12.5))
+# Power and lift limits
+PDB_AMPS = (25.0, 30.0)         # XT60 power board: continuous / burst, from its listing (all 4 ESCs are powered through it)
+BATT_MAH = 6200.0               # HOOVO 6S
+BATT_USABLE = 0.80              # land at ~20% left
+AVIONICS_W = 5.0                # flight controller, receiver, GPS, buzzer (estimate)
+MISSION_PAYLOAD = 200.0         # g, from your mission goal
+TW_GOOD = 2.0                   # thrust-to-weight for normal, responsive flying (rule of thumb)
+TW_MIN = 1.6                    # below about this, control in wind and climb-out get marginal (rule of thumb)
 KV = 360                        # motor listing
 VOLTS = 22.2

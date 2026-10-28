@@ -9,6 +9,7 @@
   --bg: #e9edee; --panel: #ffffff; --ink: #141a1d; --muted: #5a666a; --line: #d0d8da; --sunk: #f3f6f7;
   --accent: #0d6b7a; --accent-ink: #ffffff; --stage: #dfe5e7; --grid: #c3ccce;
   --c-body: #3a4248; --c-arm: #157887; --c-leg: #8b949a; --c-sel: #e07a1f;
+  --ok: #1d7a46; --warn: #a15c00; --bad: #b3261e;
   --c-motor: #aeb6bc; --c-esc: #23272b; --c-gold: #c09a2a; --c-wire: #b23a2e; --c-tie: #eceff1; --c-batt: #44527a; --c-steel: #2c3135;
   --f-display: "Chakra Petch", "Bahnschrift", "Segoe UI", sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -18,11 +19,13 @@
   --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
   --accent: #3eb1c2; --accent-ink: #062126; --stage: #12191c; --grid: #24302f;
   --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a;
+  --ok: #5cc28a; --warn: #e3a34a; --bad: #f08a80;
   --c-motor: #c3cacf; --c-esc: #4a5056; --c-gold: #d7b142; --c-wire: #d0544a; --c-tie: #dfe3e6; --c-batt: #6474a0; --c-steel: #8a9298; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0e1315; --panel: #151c1f; --ink: #e5ebec; --muted: #94a2a5; --line: #29353a; --sunk: #11181a;
   --accent: #3eb1c2; --accent-ink: #062126; --stage: #12191c; --grid: #24302f;
   --c-body: #59636a; --c-arm: #2b9cae; --c-leg: #a3acb1; --c-sel: #f0913a;
+  --ok: #5cc28a; --warn: #e3a34a; --bad: #f08a80;
   --c-motor: #c3cacf; --c-esc: #4a5056; --c-gold: #d7b142; --c-wire: #d0544a; --c-tie: #dfe3e6; --c-batt: #6474a0; --c-steel: #8a9298; color-scheme: dark }
 
 html, body { height: 100%; }
@@ -64,6 +67,14 @@ dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-
 .kv-group { font: 500 .68rem var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--accent); padding-top: 4px; grid-column: 1 / -1; }
 .empty { color: var(--muted); font-size: .9rem; }
 .status { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
+.lift-head { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lift-head div { background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; display: grid; gap: 2px; }
+.lift-head b { font: 600 1.25rem/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.lift-head span { font-size: .75rem; color: var(--muted); }
+.payload { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .85rem; }
+.payload input { width: 100%; }
+.payload output { font: 600 .9rem var(--f-mono); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+.s-ok { color: var(--ok); } .s-warn { color: var(--warn); } .s-bad { color: var(--bad); }
 
 @media (max-width: 760px) {
   .main { grid-template-columns: 1fr; grid-template-rows: 56vh auto; }
@@ -106,6 +117,13 @@ dl.dims dd { margin: 0; font: 500 .84rem var(--f-mono); text-align: right; font-
       <section>
         <span class="eyebrow">Whole frame</span>
         <dl class="dims" id="totals"></dl>
+      </section>
+      <section aria-labelledby="lift-h">
+        <span class="eyebrow" id="lift-h">Lift capacity</span>
+        <div class="lift-head" id="lift-head"></div>
+        <label class="payload" for="payload">Payload <input id="payload" type="range" min="0" max="2500" step="50" value="200"><output id="payload-out" for="payload">200 g</output></label>
+        <dl class="dims" id="lift"></dl>
+        <p class="note" id="lift-note"></p>
       </section>
       <section>
         <span class="eyebrow">Clearance check · tool paths, cables, straps</span>
@@ -251,7 +269,7 @@ async function load() {
     disc.userData.arm = inst.id; disc.raycast = () => {};
     propGroup.add(disc);
   }
-  applyTheme(); buildList(); buildTotals(); resetView(); resize();
+  applyTheme(); buildList(); buildTotals(); buildLift(); resetView(); resize();
   $("loading").hidden = true;
   restoreHash();
 }
@@ -306,6 +324,42 @@ function buildTotals() {
     + `<div class="kv-group">Thinnest walls (mm)</div>` + c.walls.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")
     + `<dt>Ground clearance under battery</dt><dd>${c.ground_mm}</dd>`;
 }
+
+// ---------- lift capacity (from the Motor sheet curve; same model as frame/analysis.py) ----------
+const interp = (x, xs, ys) => { if (x <= xs[0]) return ys[0]; for (let k = 1; k < xs.length; k++) if (x <= xs[k]) return ys[k - 1] + (ys[k] - ys[k - 1]) * (x - xs[k - 1]) / (xs[k] - xs[k - 1]); return NaN; };
+const g0 = (v) => Math.round(v).toLocaleString("en-US");
+function buildLift() {
+  const L = DATA.lift; if (!L) return;
+  $("lift-head").innerHTML = `<div><b>${g0(Math.max(L.payload_tw2_pdb, 0))} g</b><span>max payload with your 25 A power board (thrust-to-weight ${L.tw_good})</span></div>`
+    + `<div><b>${g0(Math.max(L.payload_tw2_motors, 0))} g</b><span>with a 70 A+ board: the motors' full ${(L.t_motors / 1000).toFixed(2)} kg of thrust</span></div>`;
+  $("lift-note").textContent = `Thrust from your Motor sheet (16 × 5.5 prop, ${L.volts} V): ${(L.t_motors / 1000).toFixed(2)} kg at full throttle, ${Math.round(L.i_full)} A. `
+    + `The power board is rated ${L.pdb[0]} A continuous / ${L.pdb[1]} A burst, which caps usable thrust at about ${(L.t_pdb_burst / 1000).toFixed(2)} kg. `
+    + `Hover times assume calm air and ${Math.round(L.usable * 100)}% of the ${L.mah} mAh pack; real flights get less.`;
+  updateLift(+$("payload").value);
+}
+function updateLift(P) {
+  const L = DATA.lift; if (!L) return;
+  const gs = L.curve.map((c) => c[0]), is = L.curve.map((c) => c[1]);
+  const auw = L.empty_g + P, hover = auw / 4, gmax = gs[gs.length - 1];
+  const amps = 4 * interp(hover, gs, is) + L.i_av;
+  const twB = L.t_pdb_burst / auw, twM = L.t_motors / auw;
+  const cls = (tw) => tw >= L.tw_good ? "s-ok" : tw >= L.tw_min ? "s-warn" : "s-bad";
+  const word = (tw) => tw >= L.tw_good ? "good" : tw >= L.tw_min ? "marginal" : tw >= 1.1 ? "too heavy" : "can't fly";
+  const legV = L.leg.v_hard * Math.sqrt(L.auw_ref_g / auw) * L.leg.sigma_max / L.leg.sigma_hard;
+  const mins = amps > 0 ? L.mah / 1000 * L.usable / amps * 60 : NaN;
+  $("payload-out").value = `${g0(P)} g`;
+  const rows = [
+    ["All-up weight", `${g0(auw)} g`, ""],
+    ["Thrust-to-weight, this power board", `${twB.toFixed(2)} · ${word(twB)}`, cls(twB)],
+    ["Thrust-to-weight, motors' full thrust", `${twM.toFixed(2)} · ${word(twM)}`, cls(twM)],
+    ["Hover thrust, % of max", hover <= gmax ? `${Math.round(100 * hover / gmax)}%` : "over 100%", hover / gmax <= 0.5 ? "s-ok" : hover / gmax <= 0.65 ? "s-warn" : "s-bad"],
+    [`Hover current (board: ${L.pdb[0]} A)`, Number.isFinite(amps) ? `${amps.toFixed(1)} A` : "—", amps <= L.pdb[0] * 0.7 ? "s-ok" : amps <= L.pdb[0] ? "s-warn" : "s-bad"],
+    ["Hover time (calm air)", Number.isFinite(mins) ? `${Math.round(mins)} min` : "—", ""],
+    ["Hard landing the legs take", `${legV.toFixed(2)} m/s`, legV >= 1.0 ? "" : "s-warn"],
+  ];
+  $("lift").innerHTML = rows.map(([k, v, c]) => `<dt>${esc(k)}</dt><dd class="${c}">${esc(v)}</dd>`).join("");
+}
+$("payload").addEventListener("input", (e) => updateLift(+e.target.value));
 
 function worldBox(p) { return new THREE.Box3().setFromObject(p.mesh); }
 
