@@ -1,0 +1,250 @@
+<title>Drone Parts Receiving Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column receiving log. Summary meter on top, parts grouped by system, add-a-part form at the end. */
+:root {
+  --bg: #eef1f3; --sheet: #ffffff; --ink: #172026; --muted: #5d6a72; --line: #d5dce0; --sunk: #f5f7f8;
+  --accent: #1f5f8b; --accent-ink: #ffffff; --got: #1e7a4c; --got-soft: #e3f2ea; --wait: #9a6206; --wait-soft: #fbf0dc;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1518; --sheet: #161e22; --ink: #e4eaed; --muted: #95a3ab; --line: #2a363c; --sunk: #12191c;
+  --accent: #6cb4e4; --accent-ink: #08202f; --got: #5cc791; --got-soft: #15301f; --wait: #e6b25a; --wait-soft: #33270f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1518; --sheet: #161e22; --ink: #e4eaed; --muted: #95a3ab; --line: #2a363c; --sunk: #12191c;
+  --accent: #6cb4e4; --accent-ink: #08202f; --got: #5cc791; --got-soft: #15301f; --wait: #e6b25a; --wait-soft: #33270f; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.wrap { max-width: 780px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+header { display: grid; gap: 4px; }
+.eyebrow { font: 500 .72rem/1.2 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 2.1rem/1.05 var(--f-display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+h2 { font: 700 1.15rem/1.2 var(--f-display); letter-spacing: .04em; text-transform: uppercase; margin: 0; }
+.lede { color: var(--muted); margin: 0; max-width: 62ch; }
+
+.summary { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; }
+.counts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
+.big { font: 700 2rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.big small { font: 500 1rem var(--f-display); color: var(--muted); }
+.stat { font-size: .88rem; color: var(--muted); }
+.stat b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.meter { height: 10px; border-radius: 5px; background: var(--sunk); border: 1px solid var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--got); width: 0; transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 600 .82rem/1 var(--f-body); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.group { display: grid; gap: 8px; }
+.group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 6px; }
+.group-head span { font: 500 .8rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+ul.parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.part { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: start; }
+.part.got { background: var(--got-soft); border-color: color-mix(in srgb, var(--got) 35%, var(--line)); }
+.tick { width: 28px; height: 28px; margin: 1px 0 0; accent-color: var(--got); cursor: pointer; }
+.tick:disabled { cursor: progress; }
+.body { min-width: 0; display: grid; gap: 4px; }
+.name { font-weight: 600; font-size: 1rem; line-height: 1.3; }
+.part.got .name { text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 400 .8rem var(--f-mono); color: var(--muted); }
+.meta a { color: var(--accent); text-decoration: none; }
+.meta a:hover { text-decoration: underline; }
+.use { font-size: .87rem; color: var(--muted); }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
+.stamp { font: 600 .74rem/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--got); border: 1.5px solid var(--got); border-radius: 4px; padding: 4px 6px; }
+.unordered { font: 600 .74rem/1 var(--f-mono); letter-spacing: .04em; color: var(--wait); background: var(--wait-soft); border-radius: 4px; padding: 5px 7px; border: 0; cursor: pointer; }
+.linkish { font: 500 .78rem var(--f-body); color: var(--muted); background: none; border: 0; padding: 4px 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.confirm { display: inline-flex; gap: 6px; align-items: center; font-size: .8rem; }
+.confirm button { font: 600 .78rem var(--f-body); border-radius: 5px; padding: 5px 9px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.confirm .danger { border-color: var(--wait); color: var(--wait); }
+
+.add { background: var(--sheet); border: 1px dashed var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; }
+.fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; }
+.fields label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); }
+.fields .wide { grid-column: 1 / -1; }
+input[type="text"], input[type="url"], select { font: 400 .95rem var(--f-body); padding: 9px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); width: 100%; box-sizing: border-box; }
+.primary { justify-self: start; font: 600 .9rem var(--f-body); padding: 10px 16px; border-radius: 6px; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.primary:disabled { opacity: .5; cursor: default; }
+.status { min-height: 1.3em; font-size: .85rem; color: var(--muted); margin: 0; }
+.status.err { color: var(--wait); }
+.empty { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 22px 18px; color: var(--muted); }
+.empty b { color: var(--ink); }
+@media (max-width: 520px) { .fields { grid-template-columns: 1fr; } h1 { font-size: 1.8rem; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">680 mm quad build · shipments</span>
+    <h1>Parts receiving log</h1>
+    <p class="lede">Tick each part as it arrives. Ticks save for everyone who opens this page, with the date you ticked them.</p>
+  </header>
+
+  <section class="summary" aria-label="Progress">
+    <div class="counts">
+      <div class="big" id="count">–<small> received</small></div>
+      <div class="stat" id="waiting"></div>
+      <div class="stat" id="spend"></div>
+    </div>
+    <div class="meter" role="progressbar" aria-label="Parts received" aria-valuemin="0" id="meter"><i id="meter-fill"></i></div>
+  </section>
+
+  <div class="filters" role="group" aria-label="Show">
+    <button class="chip" type="button" data-filter="all" aria-pressed="true">All parts</button>
+    <button class="chip" type="button" data-filter="waiting" aria-pressed="false">Still waiting</button>
+    <button class="chip" type="button" data-filter="got" aria-pressed="false">Received</button>
+    <button class="chip" type="button" data-filter="unordered" aria-pressed="false">Not ordered yet</button>
+  </div>
+
+  <p class="status" id="status" role="status"></p>
+  <main id="list">
+    <div class="empty"><b>Loading your parts list…</b> If it stays empty, the list hasn't been filled in yet. Add the first part with the form below.</div>
+  </main>
+
+  <section class="add" aria-labelledby="add-h">
+    <h2 id="add-h">Add a part</h2>
+    <form id="add-form" novalidate>
+      <div class="fields">
+        <label for="f-name">What is it?<input id="f-name" type="text" placeholder="e.g. 70 A power board" required maxlength="120"></label>
+        <label for="f-group">Section<select id="f-group"></select></label>
+        <label for="f-qty">Quantity or note<input id="f-qty" type="text" placeholder="e.g. 1, or pack of 50" maxlength="80"></label>
+        <label for="f-url">Order page (optional)<input id="f-url" type="url" placeholder="https://…" maxlength="500"></label>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px">
+        <button class="primary" type="submit" id="add-btn">Add to the list</button>
+        <p class="status" id="add-status"></p>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+const GROUPS = ["Flight electronics", "Propulsion", "Power", "Radio", "Frame hardware", "Added by you"];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const niceDate = (iso) => { if (!iso) return ""; const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+const safeUrl = (u) => /^https:\/\/[^\s"<>]+$/i.test(u || "") ? u : "";
+
+let db = null, parts = [], filter = "all", confirming = null;
+const busy = new Set();
+try { filter = localStorage.getItem("receiving-filter") || "all"; } catch {}
+
+$("f-group").innerHTML = GROUPS.map((g) => `<option${g === "Added by you" ? " selected" : ""}>${esc(g)}</option>`).join("");
+
+function setStatus(msg, err) { const s = $("status"); s.textContent = msg || ""; s.classList.toggle("err", !!err); }
+
+function render() {
+  document.querySelectorAll("[data-filter]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === filter)));
+  const total = parts.length, got = parts.filter((p) => p.received).length;
+  const unordered = parts.filter((p) => !p.received && p.ordered === false).length;
+  $("count").innerHTML = total ? `${got} of ${total}<small> received</small>` : `–<small> received</small>`;
+  $("waiting").innerHTML = total ? `<b>${total - got - unordered}</b> on the way · <b>${unordered}</b> not ordered yet` : "";
+  const spent = parts.reduce((t, p) => t + (typeof p.cost === "number" ? p.cost : 0), 0);
+  const spentGot = parts.reduce((t, p) => t + (p.received && typeof p.cost === "number" ? p.cost : 0), 0);
+  $("spend").innerHTML = spent ? `<b>${money(spentGot)}</b> of ${money(spent)} in hand` : "";
+  $("meter-fill").style.width = total ? `${(100 * got) / total}%` : "0";
+  $("meter").setAttribute("aria-valuemax", String(total)); $("meter").setAttribute("aria-valuenow", String(got));
+
+  if (!total) {
+    $("list").innerHTML = `<div class="empty"><b>No parts on the list yet.</b> Add the first one with the form below.</div>`;
+    return;
+  }
+  const shown = parts.filter((p) => filter === "all" || (filter === "got" ? p.received : filter === "unordered" ? (!p.received && p.ordered === false) : (!p.received && p.ordered !== false)));
+  const groups = [...GROUPS, ...new Set(parts.map((p) => p.group).filter((g) => !GROUPS.includes(g)))];
+  const html = groups.map((g) => {
+    const all = parts.filter((p) => (p.group || "Added by you") === g);
+    const rows = shown.filter((p) => (p.group || "Added by you") === g).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (!rows.length) return "";
+    const n = all.filter((p) => p.received).length;
+    return `<section class="group"><div class="group-head"><h2>${esc(g)}</h2><span>${n} / ${all.length}</span></div><ul class="parts">${rows.map(row).join("")}</ul></section>`;
+  }).join("");
+  $("list").innerHTML = html || `<div class="empty">Nothing here. ${filter === "got" ? "Tick a part when it arrives." : "Everything in this view has arrived."}</div>`;
+}
+
+function row(p) {
+  const url = safeUrl(p.url);
+  const meta = [p.qty ? esc(p.qty) : "", p.vendor ? esc(p.vendor) : "", typeof p.cost === "number" ? money(p.cost) : "",
+    url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Order page ↗</a>` : ""].filter(Boolean).join("<span aria-hidden=\"true\">·</span>");
+  const state = p.received ? `<span class="stamp">Received ${esc(niceDate(p.receivedOn))}</span>`
+    : p.ordered === false ? `<button class="unordered" type="button" data-ordered="${esc(p.id)}" title="Mark as ordered">Not ordered yet · mark ordered</button>` : "";
+  const remove = confirming === p.id
+    ? `<span class="confirm">Remove from the list? <button class="danger" type="button" data-remove-yes="${esc(p.id)}">Remove</button><button type="button" data-remove-no>Keep</button></span>`
+    : `<button class="linkish" type="button" data-remove="${esc(p.id)}">Remove</button>`;
+  return `<li class="part${p.received ? " got" : ""}">
+    <input class="tick" type="checkbox" id="tick-${esc(p.id)}" data-tick="${esc(p.id)}" ${p.received ? "checked" : ""} ${busy.has(p.id) ? "disabled" : ""} aria-describedby="use-${esc(p.id)}">
+    <div class="body">
+      <label class="name" for="tick-${esc(p.id)}">${esc(p.name)}</label>
+      ${meta ? `<div class="meta">${meta}</div>` : ""}
+      ${p.use ? `<div class="use" id="use-${esc(p.id)}">${esc(p.use)}</div>` : ""}
+      <div class="row-actions">${state}${remove}</div>
+    </div>
+  </li>`;
+}
+
+async function write(id, fn, okMsg) {
+  if (!db) { setStatus("Saving isn't available in this view.", true); return; }
+  if (busy.has(id)) return;
+  busy.add(id); render();
+  try { await fn(); setStatus(okMsg || ""); }
+  catch (e) {
+    const c = e?.code;
+    setStatus(c === "invalid_argument" || c === "not_granted" || c === "revoked" ? "You can view this list but not change it." :
+      c === "resource_exhausted" ? "Too many changes at once. Wait a moment and try again." : "Couldn't save that change. Try again.", true);
+  } finally { busy.delete(id); render(); }
+}
+
+document.addEventListener("change", (e) => {
+  const id = e.target.dataset?.tick; if (!id) return;
+  const p = parts.find((q) => q.id === id); if (!p) return;
+  const on = e.target.checked;
+  write(id, () => db.collection("parts").doc(id).update(on ? { received: true, receivedOn: today(), ordered: true } : { received: false, receivedOn: null }),
+    on ? `Marked ${p.name} as received.` : `Unticked ${p.name}.`);
+});
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.filter) { filter = t.dataset.filter; try { localStorage.setItem("receiving-filter", filter); } catch {} render(); return; }
+  if (t.dataset.ordered) { const id = t.dataset.ordered; write(id, () => db.collection("parts").doc(id).update({ ordered: true }), "Marked as ordered."); return; }
+  if (t.dataset.remove) { confirming = t.dataset.remove; render(); return; }
+  if ("removeNo" in t.dataset) { confirming = null; render(); return; }
+  if (t.dataset.removeYes) { const id = t.dataset.removeYes; confirming = null; write(id, () => db.collection("parts").doc(id).delete(), "Removed."); }
+});
+
+$("add-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("f-name").value.trim(), url = $("f-url").value.trim();
+  const st = $("add-status"); st.classList.remove("err");
+  if (!name) { st.textContent = "Give the part a name first."; st.classList.add("err"); $("f-name").focus(); return; }
+  if (url && !safeUrl(url)) { st.textContent = "The order page needs to be a full https:// link, or leave it empty."; st.classList.add("err"); return; }
+  if (!db) { st.textContent = "Saving isn't available in this view."; st.classList.add("err"); return; }
+  $("add-btn").disabled = true;
+  try {
+    await db.collection("parts").add({ name, group: $("f-group").value, qty: $("f-qty").value.trim(), url, vendor: url ? new URL(url).hostname.replace(/^www\./, "") : "",
+      use: "", cost: null, ordered: true, received: false, receivedOn: null, source: "added", order: Date.now() });
+    $("f-name").value = ""; $("f-qty").value = ""; $("f-url").value = "";
+    st.textContent = `Added ${name}.`;
+  } catch (err) {
+    st.classList.add("err");
+    st.textContent = err?.code === "quota_exceeded" ? "The list is full. Remove a part before adding another." : "Couldn't add that part. Try again.";
+  } finally { $("add-btn").disabled = false; }
+});
+
+(async () => {
+  db = window.claude?.use ? await window.claude.use("db") : null;
+  if (!db) { $("list").innerHTML = `<div class="empty"><b>The parts list can't load here.</b> Open this page signed in to claude.ai to see and tick your parts.</div>`; $("add-btn").disabled = true; return; }
+  db.collection("parts").onSnapshot((snap) => {
+    parts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (confirming && !parts.some((p) => p.id === confirming)) confirming = null;
+    render();
+  }, () => setStatus("Lost the connection to the list. Reload the page to see the latest.", true));
+})();
+render();
+</script>
