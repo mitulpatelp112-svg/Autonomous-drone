@@ -258,6 +258,7 @@ const DECISIONS = {
     charger: { label: "Charger", name: "HTRC C150 AC/DC 150 W balance charger", specs: "1–6S LiPo, 10 A / 150 W (about 6 A on 6S), 4 mm banana output with leads, JST-XH balance board, about $42–58." },
     rx: { label: "RC Receiver", name: "RadioMaster XR3 (ELRS receiver)", specs: "ExpressLRS receiver: Semtech LR1121 (2.4 GHz or 900 MHz, one band at a time), ESP32-C3, two antennas. About $15." },
     telem: { setting: true, label: "Telemetry Radio", name: "ExpressLRS MAVLink mode (via the radio's WiFi Backpack)", specs: "MAVLink2 over the ELRS link, so no separate telemetry radio. Needs ExpressLRS 3.5.0+ and Backpack 1.5.0+.", url: "https://www.expresslrs.org/software/mavlink/" },
+    pdbmain: { label: "Main power board", name: "yuenhoang 150 A 6-port XT60 power board", specs: "XT60 in, 6 × XT60 out, no BEC, no 30.5 mm holes. Ordered 2026-11-17: outputs 1–4 feed the ESCs, output 5 feeds the old 25 A board (electronics only), output 6 spare." },
     gps: { label: "GPS", name: "Holybro Micro M10 (GPS + compass)", specs: "u-blox M10 with built-in compass, 14 g. Your master sheet's primary pick." },
   },
 };
@@ -290,6 +291,8 @@ const KB = [
     battery: { cells: 6, mah: 6200, c: 120, conn: "EC5", weight: 837, dims: "152 × 48.5 × 48 mm", balance: "JST-XH 7-pin" }, notes: [] },
   { id: "pdbxt60", re: /B0FPQZ2598|pdb-xt60|power hub pdb/i, name: "30.5 mm XT60 power board, 5 V/3 A + 12 V/0.5 A BEC", short: "XT60 power board", kind: "pdb",
     conn: "XT60", cells: [2, 6], amps: 25, burst: 30, notes: [] },
+  { id: "pdb150", re: /yuenhoang|150\s*A[^\n]*(6[- ]?port|xt60-?6)|xt60-?6/i, name: "yuenhoang 150 A 6-port XT60 power board (no BEC)", short: "150 A XT60 board", kind: "pdbmain",
+    conn: "XT60", outputs: 6, notes: [] },
   { id: "rmbatt2s", re: /2s-7-4v-6200mah|2s 7\.4v 6200/i, name: "RadioMaster 2S 6200 mAh radio battery (XT30 + JST-XH)", short: "2S 6200 radio pack", kind: "radiobatt", notes: [] },
   { id: "c150", re: /htrc|\bc150\b/i, name: "HTRC C150 AC/DC 150 W balance charger", short: "HTRC C150", kind: "charger", notes: [] },
   { id: "m10", re: /micro\s*m10/i, name: "Holybro Micro M10 (GPS + compass)", short: "Micro M10", kind: "gps", compass: true, conn: "JST-GH", weight: 14, notes: [] },
@@ -319,7 +322,7 @@ const ROLES = [
   ["motor", /motor/i], ["esc", /\besc\b/i], ["prop", /propell|\bprop\b/i], ["buzzer", /buzzer/i],
   ["gps", /\bgps\b/i], ["fc", /flight controller|\bfc\b/i], ["compass", /compass/i], ["battery", /battery/i],
   ["frame", /frame/i], ["fpv", /fpv cam/i], ["percam", /perception/i], ["vtx", /vtx|video trans/i],
-  ["rx", /receiver|\brx\b/i], ["telem", /telemetry/i], ["companion", /companion/i], ["pdb", /power dist|\bbec\b|\bpdb\b/i],
+  ["rx", /receiver|\brx\b/i], ["telem", /telemetry/i], ["companion", /companion/i], ["pdbmain", /150\s*a|main power|6[- ]port/i], ["pdb", /power dist|\bbec\b|\bpdb\b/i],
   ["antenna", /antenna/i], ["wiring", /wiring|connector/i], ["tx", /transmitter|\btx module\b/i], ["radio", /radio controller|handset|^radio$/i],
 ];
 const roleOf = (name) => (ROLES.find(([, re]) => re.test(name || "")) || ["other"])[0];
@@ -672,7 +675,13 @@ function analyse(d) {
 
   // misc required items
   const pdbK = kbFor(P("pdb").text);
-  if (pdbK?.amps && top)
+  const mainK = kbFor(P("pdbmain").text);
+  if (mainK && top) {
+    add(iMaxTotal && iMaxTotal > 60 ? "warn" : "ok", "Power", `Main board carries the motors: ${fmt(top.i, 1)} A peak per ESC output, ≈ ${fmt(iMaxTotal)} A total through its XT60 input`,
+      "The real limit is the XT60 plugs (about 30 A continuous, 60 A in short bursts), not the board's 150 A label. Hover is 9–17 A, so full throttle only matters in short bursts. Solder an XT60 male on each ESC power lead.", true);
+    if (pdbK) add("ok", "Power", `Old ${pdbK.amps} A board now powers the electronics only`,
+      `Feed it from the main board's output 5. It passes battery voltage to the Kakute and keeps its 5 V/3 A and 12 V/0.5 A BECs as spares. Leave its ESC pads empty and insulated: if an ESC goes back on it, the ${pdbK.amps} A limit (about 370 g payload) returns.`);
+  } else if (pdbK?.amps && top)
     add(top.i <= pdbK.amps ? "ok" : top.i <= pdbK.burst ? "warn" : "bad", "Power", `Power board: ${pdbK.amps} A per ESC (${pdbK.burst} A for 10 s) vs ${fmt(top.i, 1)} A peak per motor`,
       `It takes ${pdbK.cells[0]}–${pdbK.cells[1]}S, so your 6S packs are at the top of its range. Its 5 V/3 A BEC is a spare: the Kakute's own BEC already powers the receiver, GPS and buzzer. The XT60 comes loose and must be soldered on.`);
   else if (has(P("pdb")) && !/\d+\s*A/i.test(P("pdb").text))
@@ -691,10 +700,11 @@ function analyse(d) {
   /* --- wiring --- */
   const perMotorI = top?.i ?? 15;
   const wires = [
-    { from: "Battery", to: "Power board", kind: "pwr", spec: `${s.battery.conn || "XT60"} · ${gauge(iMaxTotal || 60)} AWG`, note: "Fit a smoke stopper or fuse for the very first power-up." },
-    { from: "Power board", to: "ESC 1–4 (power)", kind: "pwr", spec: `${gauge(perMotorI)} AWG each`, note: "Solder to the board pads; keep the leads short and equal." },
+    { from: "Battery", to: "Main power board (150 A)", kind: "pwr", spec: `${s.battery.conn || "XT60"} · ${gauge(iMaxTotal || 60)} AWG`, note: "Fit a smoke stopper or fuse for the very first power-up." },
+    { from: "Main board outputs 1–4", to: "ESC 1–4 (power)", kind: "pwr", spec: `XT60 · ${gauge(perMotorI)} AWG each`, note: "Solder an XT60 male on each ESC lead; keep the leads short and equal." },
+    { from: "Main board output 5", to: "Electronics board (old 25 A)", kind: "pwr", spec: "XT60", note: "Electronics only. Leave the old board's ESC pads empty and insulated. Output 6 is a spare." },
     { from: "ESC 1–4", to: "Motor 1–4", kind: "pwr", spec: s.esc.bullet ? `${s.esc.bullet} mm bullets` : "3 phase wires", note: "Swap any two phase wires to reverse a motor's spin direction." },
-    { from: "Power board", to: "Flight controller", kind: "pwr", spec: "VBAT + GND", note: s.esc.noBec ? (kbFor(parts.fc?.text)?.bec5 ? `Battery voltage only. The flight controller's own ${kbFor(parts.fc.text).bec5} BEC makes 5 V for the receiver, GPS and buzzer.` : "ESCs have no BEC, so the FC must be fed here. Confirm its input range covers 6S.") : "", verify: !kbFor(parts.fc?.text)?.vin },
+    { from: "Electronics board", to: "Flight controller", kind: "pwr", spec: "VBAT + GND", note: s.esc.noBec ? (kbFor(parts.fc?.text)?.bec5 ? `Battery voltage only. The flight controller's own ${kbFor(parts.fc.text).bec5} BEC makes 5 V for the receiver, GPS and buzzer.` : "ESCs have no BEC, so the FC must be fed here. Confirm its input range covers 6S.") : "", verify: !kbFor(parts.fc?.text)?.vin },
     { from: "Flight controller", to: "ESC 1–4 (signal)", kind: "sig", spec: "Signal + GND per ESC", note: "Wire M1–M4 to the motor order in the ArduPilot quad-X diagram." },
     { from: `Receiver${has(P("rx")) && rxK?.short ? ` (${rxK.short})` : ""}`, to: "Flight controller UART", kind: "data", spec: "TX↔RX, RX↔TX, 5 V, GND",
       note: mavlink ? "Set the receiver's output to MAVLink, and that port's SERIALx_PROTOCOL to 2 (MAVLink2). Baud rate per the ExpressLRS MAVLink guide." : "ExpressLRS uses CRSF. In ArduPilot set that port's SERIALx_PROTOCOL to 23 (RCIN).",
@@ -737,7 +747,7 @@ function analyse(d) {
 
   /* --- connectors, from the product pages linked in the sheet --- */
   const fcIsKakute = /kakute/i.test(P("fc").text || "");
-  const pdbConn = pdbK?.conn || null;
+  const pdbConn = mainK?.conn || pdbK?.conn || null;
   const bats = [["Primary battery", s.battery, P("battery")], ["Backup battery", s.battery2, P("battery2")]].filter(([, b, p]) => b && has(p));
   for (const [label, b] of bats) {
     if (b.conn && pdbConn && b.conn !== pdbConn)
@@ -755,18 +765,21 @@ function analyse(d) {
   const conns = [];
   const conn = (part, has_, goes, sev, todo, verify) => conns.push({ part, has: has_, goes, sev, todo, verify });
   for (const [label, b] of bats)
-    conn(`${label}: ${b.name}`, `${b.conn || "?"} power plug · ${b.balance || "balance lead"}`, `Power board ${pdbConn || "input"} · charger balance board`,
+    conn(`${label}: ${b.name}`, `${b.conn || "?"} power plug · ${b.balance || "balance lead"}`, `Main power board ${pdbConn || "input"} · charger balance board`,
       !pdbConn || !b.conn ? "info" : b.conn === pdbConn ? "ok" : "bad", b.conn && pdbConn && b.conn !== pdbConn ? `Needs an ${b.conn}-to-${pdbConn} adapter (or change the power board's plug).` : "Plugs in directly.");
-  if (has(P("pdb"))) conn(`Power board: ${pdbK?.short || "PDB"}`, pdbK ? `${pdbConn} input (loose, solder on) · 6 pairs of ESC pads · 5 V and 12 V pads` : "Not identified", "Battery · 4 ESCs · flight controller VBAT",
-    pdbK ? "ok" : "info", pdbK ? "Solder the XT60 with 12 AWG leads; tin the pads first." : "Add the product link to the sheet.");
+  if (has(P("pdbmain"))) conn(`Main power board: ${mainK?.short || "150 A board"}`, "XT60 input · 6 × XT60 outputs · no BEC, no 30.5 mm holes", "Battery · ESC 1–4 on outputs 1–4 · electronics board on output 5 · output 6 spare",
+    "ok", "Needs its own spot in the frame.", true);
+  if (has(P("pdb"))) conn(`Electronics board: ${pdbK?.short || "PDB"}`, pdbK ? `${pdbK.conn} input (loose, solder on) · ESC pads · battery pads · 5 V and 12 V pads` : "Not identified", has(P("pdbmain")) ? "Main board output 5 · flight controller VBAT" : "Battery · 4 ESCs · flight controller VBAT",
+    pdbK ? "ok" : "info", pdbK ? (has(P("pdbmain")) ? "Solder its XT60 input with 12 AWG leads. Leave the ESC pads empty and insulate them (they're live)." : "Solder the XT60 with 12 AWG leads; tin the pads first.") : "Add the product link to the sheet.");
   if (kbFor(P("motor").text)?.id === "motor5010" || s.esc.found) {
-    conn("ESC power leads (×4)", "Bare red/black wires", "Power board ESC pads", "ok", "Solder; keep all four the same length.");
+    conn("ESC power leads (×4)", "Bare red/black wires", has(P("pdbmain")) ? "Main board XT60 outputs 1–4" : "Power board ESC pads", has(P("pdbmain")) ? "warn" : "ok",
+      has(P("pdbmain")) ? "Solder an XT60 male on each lead (from the XT60 pack); keep all four the same length." : "Solder; keep all four the same length.");
     conn("ESC to motor (×4)", "3 female 3.5 mm bullets on each ESC; male bullets for the motors are in the box", "Motor's 3 phase wires", "ok", "Solder the included bullets to the motor wires and heat-shrink them. Swap any two to reverse a motor.");
     conn("ESC signal (×4)", "2-wire servo plug: signal + ground (OPTO, no 5 V)", fcIsKakute ? "Kakute M1–M4 through its JST-SH 8-pin ESC port (cable included)" : "Flight controller motor outputs",
       fcIsKakute ? "warn" : "info", fcIsKakute ? "Not plug-and-play: the Kakute's ESC port is made for a 4-in-1 ESC. Cut the included 8-pin cable and solder each ESC's signal to M1–M4 and its ground to GND. Check the pin order on Holybro's pinout." : "", fcIsKakute);
   }
-  if (fcIsKakute) conn("Flight controller power", "VBAT and GND (on the 8-pin ESC cable or battery pads)", "Power board battery pads", "ok",
-    "Run VBAT/GND from the power board (the v1.5 takes 3S–8S). Its own 5 V/2 A BEC then powers the receiver, GPS and buzzer.", true);
+  if (fcIsKakute) conn("Flight controller power", "VBAT and GND (on the 8-pin ESC cable or battery pads)", has(P("pdbmain")) ? "Electronics board battery pads" : "Power board battery pads", "ok",
+    "Run VBAT/GND from the electronics board (the v1.5 takes 3S–8S). Its own 5 V/2 A BEC then powers the receiver, GPS and buzzer.", true);
   if (has(P("rx"))) conn(`Receiver: ${rxK?.short || "RX"}`, rxK?.id === "rp3" ? "Solder pads 5V / GND / TX / RX, CRSF wire included · 2 UFL T-antennas" : "UART pads (5V / GND / TX / RX)",
     `${shortName(P("fc"), "Flight controller")} UART pads (RX→TX, TX→RX) and 5 V`, "ok", "Solder. Use a free UART (not UART2, which is Bluetooth). Set its output to MAVLink, SERIALx_PROTOCOL = 2.", true);
   if (has(P("gps"))) conn(`GPS: ${kbFor(P("gps").text)?.short || P("gps").name}`, kbFor(P("gps").text)?.conn ? `${kbFor(P("gps").text).conn} socket + solder pads (cable included): 5V, GND, TX, RX, SDA, SCL` : "UART + I²C",
@@ -785,7 +798,7 @@ function analyse(d) {
     batt: s.battery.mah ? `${s.battery.cells}S ${s.battery.mah} mAh ${s.battery.chem || ""}`.trim() : "Battery",
     motor: s.motor.model ? `${s.motor.model} ${s.motor.kv ?? ""}KV ×4` : "Motors", esc: s.esc.cont ? `${s.esc.cont} A ESC ×4` : "ESCs",
     prop: prop || "Props", fc: shortName(P("fc"), "Flight controller"), rx: shortName(P("rx"), "Receiver"), tx: shortName(txP, "TX module"),
-    radio: shortName(radioP, "Radio"), gps: shortName(P("gps"), "GPS"), pdb: "Power board", frame: "Self-designed frame", buz: "Buzzer",
+    radio: shortName(radioP, "Radio"), gps: shortName(P("gps"), "GPS"), pdb: has(P("pdbmain")) ? "Electronics board" : "Power board", main: "Main power board", frame: "Self-designed frame", buz: "Buzzer",
   };
   const pairs = [];
   const pair = (a, b, via, sev, why, verify) => pairs.push({ a, b, via, sev, why, verify });
@@ -795,8 +808,12 @@ function analyse(d) {
   pair(nm.batt, nm.esc, "Battery voltage", eOk == null ? "warn" : eOk ? "ok" : "bad", eOk == null ? "Could not read both voltage ratings." : `${s.battery.cells}S is ${eOk ? "inside" : "outside"} the ESC's ${s.esc.cellsMin}–${s.esc.cellsMax}S input.`);
   const cr = iMaxTotal && CONN_A[s.battery.conn] ? iMaxTotal / CONN_A[s.battery.conn] : null;
   const plugClash = s.battery.conn && pdbConn && s.battery.conn !== pdbConn;
-  pair(nm.batt, nm.pdb, `${s.battery.conn || "?"}${plugClash ? ` → ${pdbConn}` : ""} · ${gauge(iMaxTotal || 60)} AWG`, plugClash ? "bad" : cr == null ? "warn" : cr <= 0.8 ? "ok" : cr <= 1 ? "warn" : "bad",
+  pair(nm.batt, has(P("pdbmain")) ? nm.main : nm.pdb, `${s.battery.conn || "?"}${plugClash ? ` → ${pdbConn}` : ""} · ${gauge(iMaxTotal || 60)} AWG`, plugClash ? "bad" : cr == null ? "warn" : cr <= 0.8 ? "ok" : cr <= 1 ? "warn" : "bad",
     plugClash ? `The battery's ${s.battery.conn} plug doesn't fit the power board's ${pdbConn}. Use an ${s.battery.conn}-to-${pdbConn} adapter or change the board's plug.` : cr == null ? "Connector rating unknown." : `Full throttle ≈ ${fmt(iMaxTotal)} A vs ≈ ${CONN_A[s.battery.conn]} A connector rating.${cr > 0.8 ? " Fine in bursts; an XT90 gives margin." : ""}`);
+  if (has(P("pdbmain"))) {
+    pair(nm.main, nm.esc, "XT60 outputs 1–4", "ok", top ? `${fmt(top.i, 1)} A peak per ESC, well inside one XT60 output.` : "");
+    pair(nm.main, nm.pdb, "XT60 output 5", "ok", "Electronics only: under 2 A with the Kakute and both BECs fully loaded.");
+  }
   const fcK2 = kbFor(P("fc").text);
   const vinOk = fcK2?.vin && s.battery.cells ? s.battery.cells * 4.2 <= fcK2.vin[1] && s.battery.cells * 3.0 >= fcK2.vin[0] : null;
   pair(nm.pdb, nm.fc, fcK2?.bec5 ? "VBAT" : "VBAT + 5 V", vinOk === false ? "bad" : fcK2?.bec5 && vinOk ? "ok" : s.esc.noBec ? "warn" : "ok",
@@ -907,7 +924,12 @@ function renderSchematic(A) {
   const rxBad = A.rxK?.kind === "tx-module";
   const N = {
     batt: { x: 20, y: 210, w: 150, h: 60, t: "Flight battery", s: A.s.battery.mah ? `${A.s.battery.cells}S ${A.s.battery.mah} mAh` : "–", st: partState(P("battery")) },
-    pdb: { x: 230, y: 210, w: 150, h: 60, t: "Power board", s: kbFor(P("fc")?.text)?.bec5 ? "Battery voltage only" : "PDB + 5 V BEC", st: partState(P("pdb")) },
+    ...(P("pdbmain") && has(P("pdbmain")) ? {
+      main: { x: 230, y: 210, w: 160, h: 60, t: "Main power board", s: "150 A · 6 × XT60", s2: "4 ESC, 1 elec, 1 spare", st: partState(P("pdbmain")) },
+      pdb: { x: 290, y: 300, w: 150, h: 50, t: "Electronics board", s: "Old 25 A board", st: partState(P("pdb")) },
+    } : {
+      pdb: { x: 230, y: 210, w: 150, h: 60, t: "Power board", s: kbFor(P("fc")?.text)?.bec5 ? "Battery voltage only" : "PDB + 5 V BEC", st: partState(P("pdb")) },
+    }),
     fc: { x: 450, y: 196, w: 170, h: 92, t: "Flight controller", s: shortName(P("fc"), "Not chosen"), s2: kbFor(P("fc")?.text)?.bec5 ? `ArduPilot · ${kbFor(P("fc").text).bec5.split(" /")[0]} BEC` : "ArduPilot", st: partState(P("fc")) },
     rx: { x: 450, y: 40, w: 170, h: 60, t: "Receiver", s: rxBad ? "Need an ELRS RX" : shortName(P("rx"), "Not chosen"), s2: A.mavlink ? "ELRS · MAVLink mode" : "", st: partState(P("rx"), rxBad) },
     gps: { x: 650, y: 40, w: 170, h: 60, t: "GPS + compass", s: shortName(P("gps"), "Not chosen"), st: partState(P("gps")) },
@@ -933,8 +955,14 @@ function renderSchematic(A) {
   let e = "";
   // power
   e += wire(`M170 240H230`, "pwr", 3.5);
-  e += wire(`M305 270V350H710V${N.esc0.y + 18}`, "pwr", 3.5);
-  e += wire(`M380 232H450`, "pwr", 3.5);
+  if (N.main) {
+    e += wire(`M255 270V375H710V${N.esc0.y + 18}`, "pwr", 3.5);
+    e += wire(`M345 270V300`, "pwr", 3);
+    e += wire(`M440 323H470V288`, "pwr", 3);
+  } else {
+    e += wire(`M305 270V350H710V${N.esc0.y + 18}`, "pwr", 3.5);
+    e += wire(`M380 232H450`, "pwr", 3.5);
+  }
   for (let i = 0; i < 4; i++) {
     const y = N["esc" + i].y + 18;
     e += wire(`M710 ${y}H740`, "pwr", 3.5);
@@ -960,11 +988,17 @@ function renderSchematic(A) {
   const labels = [
     `<text x="20" y="22" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">AIRCRAFT</text>`,
     `<text x="20" y="508" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">GROUND STATION</text>`,
-    label(176, 232, (() => { const pc = kbFor(P("pdb")?.text)?.conn, bc = A.s.battery.conn; return bc && pc && bc !== pc ? `${bc}≠${pc}` : bc || "XT60"; })(),
-      "start", (() => { const pc = kbFor(P("pdb")?.text)?.conn, bc = A.s.battery.conn; return bc && pc && bc !== pc ? "bad" : "muted"; })()),
+    label(176, 232, (() => { const pc = kbFor(P("pdbmain")?.text)?.conn || kbFor(P("pdb")?.text)?.conn, bc = A.s.battery.conn; return bc && pc && bc !== pc ? `${bc}≠${pc}` : bc || "XT60"; })(),
+      "start", (() => { const pc = kbFor(P("pdbmain")?.text)?.conn || kbFor(P("pdb")?.text)?.conn, bc = A.s.battery.conn; return bc && pc && bc !== pc ? "bad" : "muted"; })()),
     label(176, 258, `${gauge(A.model.iMaxTotal || 60)} AWG`),
-    label(386, 224, "VBAT"),
-    label(380, 366, `${gauge(A.model.top?.i || 15)} AWG to each ESC`),
+    ...(N.main ? [
+      label(476, 306, "VBAT"),
+      label(350, 290, "out 5 · XT60"),
+      label(440, 368, `out 1–4 · XT60 · ${gauge(A.model.top?.i || 15)} AWG to each ESC`),
+    ] : [
+      label(386, 224, "VBAT"),
+      label(380, 366, `${gauge(A.model.top?.i || 15)} AWG to each ESC`),
+    ]),
     label(860, 142, "3-phase"),
     label(542, 150, A.mavlink ? "MAVLink2" : "CRSF"),
     label(542, 164, "UART"),
@@ -972,7 +1006,7 @@ function renderSchematic(A) {
     ...(N.tx ? [label(424, 543, "XT30")] : []),
     label(N.tx ? 565 : 450, 620, "WiFi (no wire) · MAVLink to Mission Planner", "middle"),
   ].join("");
-  $("schematic").innerHTML = `<svg viewBox="0 0 980 630" width="980" height="630" role="img" aria-label="Wiring diagram: battery, power board, ESCs and motors; flight controller with receiver, GPS and buzzer; ground station radio, transmitter module, its battery and laptop">${e}${Object.values(N).map(drawBox).join("")}${labels}</svg>`;
+  $("schematic").innerHTML = `<svg viewBox="0 0 980 630" width="980" height="630" role="img" aria-label="Wiring diagram: battery, main power board, ESCs and motors, electronics board; flight controller with receiver, GPS and buzzer; ground station radio, transmitter module, its battery and laptop">${e}${Object.values(N).map(drawBox).join("")}${labels}</svg>`;
 
   const rows = [...A.wires, ...A.ground, ...A.phase2];
   $("wire-table").innerHTML = `<thead><tr><th>From</th><th>To</th><th>Line</th><th>Wire / connector</th><th>Notes</th></tr></thead><tbody>${rows.map((w) => {

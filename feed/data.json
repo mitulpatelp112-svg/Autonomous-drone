@@ -2,9 +2,9 @@
  "source": {
   "file": "Drone_Master_Build_Sheet.xlsx",
   "share_url": "https://studentuncc-my.sharepoint.com/:x:/g/personal/mpate183_charlotte_edu/IQDsuxazQJ82SpIsXuKB2604AWyWIvZJR2nDEfddNOIa2ec?e=Zj4fVf",
-  "modified": "Fri, 23 Oct 2026 16:30:58 GMT",
-  "sha256": "5c1cb631aea2812e",
-  "synced_at": "2026-10-23T16:48:10+00:00",
+  "modified": "Wed, 28 Oct 2026 18:21:33 GMT",
+  "sha256": "ab306d90bd7b74d5",
+  "synced_at": "2026-11-14T05:52:18+00:00",
   "sheets": [
    "cart",
    "Motor",
@@ -31,7 +31,7 @@
     "component": "Propeller",
     "link": "Prop",
     "qty": 1,
-    "cost": 17.1,
+    "cost": 30,
     "url": "https://www.aliexpress.us/item/3256808508291370.html?src=google&src=google&albch=shopping&acnt=179-224-6891&isdl=y&slnk=&plac=&mtctp=&albbt=Google_7_shopping&aff_platform=google&aff_short_key=_oFgTQeV&gclsrc=aw.ds&albagn=888888&ds_e_adid=&ds_e_matchtype=&ds_e_device=c&ds_e_network=x&ds_e_product_group_id=&ds_e_product_id=en3256808508291370&ds_e_product_merchant_id=5566033220&ds_e_product_country=US&ds_e_product_language=en&ds_e_product_channel=online&ds_e_product_store_id=&ds_url_v=2&albcp=23114515373&albag=&isSmbAutoCall=false&needSmbHouyi=false&gad_source=4&gad_campaignid=23118775333&gbraid=0AAAABBR8xIdEJFtPJmV7Erp3vATOBuNwq&gclid=CjwKCAjwifjVBhBKEiwAYx4K9DWaBIiyg_9wcLm1hJeUfIuB5HZHiwe3J_h3bCEpgWE4PSLCwKuY4RoCrTgQAvD_BwE&gatewayAdapt=glo2usa"
    },
    {
@@ -149,7 +149,7 @@
     "component": "Total",
     "link": null,
     "qty": null,
-    "cost": 545.27
+    "cost": 558.17
    }
   ]
  },
