@@ -65,7 +65,7 @@ CONNECTOR = "XT90"               # [E] your choice. Fine for today's flying; che
 SHUNT_OHM = 0.00025              # [E] 0.25 mOhm, 4-terminal (Kelvin) shunt (0.5 mOhm would burn 5 W at 100 A)
 SHUNT_W_RATING = 6.0             # [E] pick a part rated >= this; check its derating curve at T_AMBIENT
 CSA_GAIN = 50.0                  # [E] e.g. TI INA240A2 (gain 50). INA240 family: -4..80 V common mode (verify on datasheet)
-ADC_VREF = 3.3                   # [V] Kakute H7 ADC full scale; run the amplifier from 3.3 V so it can't overdrive the pin
+ADC_VREF = 3.3                   # [V] STM32H7 ADCs are 3.3 V; Holybro doesn't state the CUR pin's range. Running the amplifier from 3.3 V means it can't overdrive the pin either way
 CSA_SWING_LOSS = 0.1             # [E] output can't reach the rail exactly
 
 # --- Digital power monitor (for logging) -----------------------------------------------------
@@ -99,9 +99,16 @@ CAP_V = 50.0                     # [E] 50 V parts on a 25.2 V bus
 TVS_STANDOFF = 28.0              # [E] e.g. an SMDJ28A-class TVS: off below 28 V, clamps a spike near 45 V (verify part)
 
 # --- Kakute link --------------------------------------------------------------------
-# One JST-SH 8-pin cable to the Kakute's ESC connector, like a 4-in-1 ESC would use.
-# PIN ORDER IS NOT CONFIRMED. Copy it from Holybro's Kakute H7 v1.5 pinout before layout.
-KAKUTE_ESC_PINS = ("VBAT", "GND", "CURR", "TLM", "M1", "M2", "M3", "M4")   # [V] placeholder order
+# One JST-SH 8-pin cable to the Kakute's "ESC Port 1", like a 4-in-1 ESC would use.
+# Pin order from Holybro's Kakute H7 pinout table (docs.holybro.com, kakute-h7-v1/pinout) and the labels on
+# ArduPilot's Kakute H7 pinout image, where the B+ end of the connector is marked. Holybro's version chart lists
+# no ESC-connector change from V1.2 to V1.5, but the drawings are of V1.2/V1.3: check pin 1 on your board.
+#   B+  : battery voltage in (powers the Kakute; its own divider measures it on BATT_VOLT_PIN 10)
+#   R7  : UART7 RX, ESC telemetry. The OPTO ESCs have none, so the PDB leaves it unconnected.
+#   CUR : current-sense input (BATT_CURR_PIN 11). Voltage range not stated by Holybro or ArduPilot.
+KAKUTE_ESC_PINS = ("B+", "R7", "GND", "CUR", "M1", "M2", "M3", "M4")   # [D] pin 1 = B+
+KAKUTE_5V_MAX_A = 1.5            # [L] Holybro pinout: "5v output (1.5A max)" (the spec list says 5 V BEC 2 A)
+KAKUTE_I2C = "SDA/SCL solder pads, no connector"   # [L] shared with the GPS compass
 # J2: Pixhawk-style 6-pin power port (JST-GH). Pin order as I recall the Pixhawk standard; verify against your FC's docs.
 PIXHAWK_POWER_PINS = ("5V", "5V", "CURR", "VOLT", "GND", "GND")   # [V]
 SH_PIN_A = 1.0                   # [V] JST-SH contact rating as I recall it (about 1 A per pin)

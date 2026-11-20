@@ -219,7 +219,7 @@ Bus loop (+ and GND), {bus['path_mm']} mm path, {bus['pour_width_mm']:g} mm wide
 | Shunt voltage, hover / full throttle / {P.I_CONT:g} A | {s['mV_at_hover']} mV / {s['mV_at_full']} mV / {s['mV_at_design']} mV |
 | Shunt power, hover / full throttle / {P.I_CONT:g} A / {P.I_PEAK:g} A peak | {s['W_hover']} W / {s['W_full']} W / {s['W_design']} W / {s['W_peak']} W (a {P.SHUNT_W_RATING:g} W part covers the peak: {'ok' if s['W_rating_needed_ok'] else 'NOT OK'}) |
 | Resolution (12-bit ADC) | {s['A_per_ADC_step_12bit']} A per step |
-| ArduPilot | `BATT_MONITOR = 4`, `BATT_AMP_PERVLT = {s['ardupilot_BATT_AMP_PERVLT']}`, `BATT_AMP_OFFSET = 0` (calibrate against a clamp meter) |
+| ArduPilot (Kakute) | `BATT_MONITOR = 4`, `BATT_VOLT_PIN = 10`, `BATT_CURR_PIN = 11`, `BATT_VOLT_MULT = 11` (Kakute defaults), `BATT_AMP_PERVLT = {s['ardupilot_BATT_AMP_PERVLT']}` (this board; the Kakute default 59.5 is for Holybro's Tekko32 ESC), `BATT_AMP_OFFSET = 0`. Calibrate against a meter and clamp meter |
 
 ## Data logging
 | Source | What it reports | Where it goes |

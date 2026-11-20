@@ -41,7 +41,7 @@ Bus loop (+ and GND), 59.4 mm path, 46 mm wide at 60 C:
 | Shunt voltage, hover / full throttle / 100 A | 2.33 mV / 12.6 mV / 25.0 mV |
 | Shunt power, hover / full throttle / 100 A / 150 A peak | 0.022 W / 0.64 W / 2.5 W / 5.62 W (a 6 W part covers the peak: ok) |
 | Resolution (12-bit ADC) | 0.064 A per step |
-| ArduPilot | `BATT_MONITOR = 4`, `BATT_AMP_PERVLT = 80.0`, `BATT_AMP_OFFSET = 0` (calibrate against a clamp meter) |
+| ArduPilot (Kakute) | `BATT_MONITOR = 4`, `BATT_VOLT_PIN = 10`, `BATT_CURR_PIN = 11`, `BATT_VOLT_MULT = 11` (Kakute defaults), `BATT_AMP_PERVLT = 80.0` (this board; the Kakute default 59.5 is for Holybro's Tekko32 ESC), `BATT_AMP_OFFSET = 0`. Calibrate against a meter and clamp meter |
 
 ## Data logging
 | Source | What it reports | Where it goes |
