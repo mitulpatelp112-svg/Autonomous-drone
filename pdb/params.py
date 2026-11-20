@@ -20,9 +20,9 @@ I_HOVER = 9.3                    # [D] battery current at hover with the 200 g p
 I_AVIONICS = 0.5                 # [E] Kakute + its BEC loads, taken off the battery bus
 
 # Design targets for the board
-I_CONT = 60.0                    # [E] continuous: full throttle on all four (~50 A) + 20 %
-I_PEAK = 100.0                   # [E] 10 s peak (punch-outs, a stuck motor) - copper must survive it
-I_PER_ESC = 20.0                 # [E] each ESC branch: 12.5 A max draw with margin
+I_CONT = 100.0                   # [E] continuous design rating: 2x today's full throttle (~50 A), room for bigger motors
+I_PEAK = 150.0                   # [E] 10 s peak - copper must survive it
+I_PER_ESC = 30.0                 # [E] each ESC branch: 100 A / 4 = 25 A, rounded up to the 30 A ESC rating
 DT_CONT = 20.0                   # [E] allowed copper temperature rise at I_CONT
 DT_PEAK = 45.0                   # [E] allowed temperature rise if I_PEAK were steady (conservative for 10 s)
 T_AMBIENT = 40.0                 # [E] inside the bay on a warm day
@@ -37,37 +37,64 @@ RHO_CU = 1.72e-8                 # [S] ohm*m at 20 C
 ALPHA_CU = 0.00393               # [S] per degC
 
 # --- Board shape and fit in the frame bay --------------------------------------------
-BOARD = 60.0                     # [E] square board edge; the bay is 90 mm inside [D: CORE 96 - 2 x WALL 3]
+BOARD = 66.0                     # [E] square board edge (66 mm makes room for two buck converters); bay is 90 mm inside [D]
 CORNER_CHAMFER = 9.0             # [E] corners cut at 45 deg so the ESC pads face the arm wire passes
 STACK = 30.5                     # [D] Kakute H7 v1.5 pattern; board sits on the bay's existing standoffs
 STACK_HOLE_D = 3.4               # [S] M3 clearance
 STACK_KEEPOUT_D = 7.0            # [E] copper-free ring round each stack hole (nylon spacer + washer)
+# Each net has whole layers to itself, so the narrowest cross-section of its copper is the board width
+# less the two stack-hole keep-outs on that line, less ~6 mm for pad islands of the other net.
+BUS_WIDTH = BOARD - 2 * STACK_KEEPOUT_D - 6.0
 BAY_INNER = 90.0                 # [D] CORE - 2 * WALL
 STRAP_X = 33.0                   # [D] battery strap bands run under the board at x = +/-33 (22 mm wide)
 LEAD_SLOT_Y = -38.0              # [D] battery lead comes up through the floor at y = -38
 ARM_ANGLES = (45, 135, 225, 315) # [D] arms on the diagonals
 
 # --- Pads and connectors ---------------------------------------------------------------
-BATT_AWG = 12                    # [E] battery pigtail: 12 AWG silicone to an XT60 (or XT90 if you go bigger)
-ESC_AWG = 16                     # [D] frame wire groove is sized for 2 x 16 AWG per arm
-BATT_PAD = (12.0, 7.0)             # [E] battery +/- solder pads (12 AWG fits with a fillet all round)
-ESC_PAD = (8.0, 5.0)             # [E] per-ESC +/- solder pads (16 AWG)
+BATT_AWG = 8                     # [E] battery pigtail: 8 AWG silicone (10 AWG runs hot at 100 A continuous)
+ESC_AWG = 14                     # [E] 25-30 A per branch. Frame groove (12 x 7 mm) was sized for 16 AWG; 2 x 14 AWG should fit (verify)
+BATT_PAD = (14.0, 9.0)             # [E] battery +/- solder pads, sized for 8 AWG (~4.5-5 mm over the insulation, verify)
+ESC_PAD = (9.0, 5.5)             # [E] per-ESC +/- solder pads (14 AWG)
 SIG_PAD = (2.0, 3.0)             # [E] ESC signal + signal-ground pads per arm
-XT60_A = (30.0, 60.0)            # [V] Amass XT60 rating as I recall it: 30 A rated, 60 A burst. Hobby use often quotes 60 A.
-XT90_A = (45.0, 90.0)            # [V] Amass XT90, same caveat
+# Battery connector candidates: (rated continuous A, burst A). All [V]: my recollection of Amass figures; hobby
+# sellers often quote higher. Check the maker's datasheet for the exact part.
+CONNECTORS = {"XT60": (30.0, 60.0), "XT90": (45.0, 90.0), "AS150": (150.0, 300.0)}
+CONNECTOR = "XT90"               # [E] your choice. Fine for today's flying; check its datasheet rating against 100 A held
 
 # --- Current sensing (shunt + current-sense amplifier -> Kakute CURR input) ----------
-SHUNT_OHM = 0.0005               # [E] 0.5 mOhm, 4-terminal (Kelvin) shunt
-SHUNT_W_RATING = 5.0             # [E] pick a part rated >= this; check its derating curve at T_AMBIENT
+SHUNT_OHM = 0.00025              # [E] 0.25 mOhm, 4-terminal (Kelvin) shunt (0.5 mOhm would burn 5 W at 100 A)
+SHUNT_W_RATING = 6.0             # [E] pick a part rated >= this; check its derating curve at T_AMBIENT
 CSA_GAIN = 50.0                  # [E] e.g. TI INA240A2 (gain 50). INA240 family: -4..80 V common mode (verify on datasheet)
 ADC_VREF = 3.3                   # [V] Kakute H7 ADC full scale; run the amplifier from 3.3 V so it can't overdrive the pin
 CSA_SWING_LOSS = 0.1             # [E] output can't reach the rail exactly
 
+# --- Digital power monitor (for logging) -----------------------------------------------------
+# A TI INA228 on the same Kelvin shunt: 20-bit, reads bus voltage, current, power, energy, charge and its own
+# temperature over I2C (verify on the datasheet: I recall 0-85 V bus range and +/-163.84 mV / +/-40.96 mV shunt ranges).
+# J3 (JST-GH 4-pin: 5V, SCL, SDA, GND) goes to the flight controller's I2C bus or a companion computer.
+PMON_SHUNT_FS_MV = 163.84        # [V] widest shunt range (ADCRANGE = 0)
+PMON_ADC_BITS = 20               # [V]
+PMON_I2C_ADDR = 0x40             # [V] with A0 = A1 = GND; 16 addresses are selectable
+I2C_PINS = ("5V", "SCL", "SDA", "GND")   # [V] common drone I2C/GPS-port order; check against your FC
+
 # --- Battery voltage sense --------------------------------------------------------------
-# The Kakute measures VBAT through its own input divider, so the board just passes VBAT + GND to it.
+# The Kakute measures VBAT through its own input divider (it gets raw VBAT on J1).
+# J2 (Pixhawk-style power port) gets a scaled voltage from this divider.
+VDIV = (100e3, 10e3)             # [E] top, bottom: 11:1, so 25.2 V reads 2.29 V and full scale is ~36 V
+
+# --- On-board supplies (BECs) ---------------------------------------------------------------
+# Both are the same 60 V-input synchronous/asynchronous buck (e.g. a TI TPS54560-class part, 5 A switch: verify).
+# BEC1 is fixed 5 V for a flight controller. BEC2 is set to 12 V or 5 V by a solder jumper on its feedback divider.
+BEC_VIN_MAX = 60.0               # [V] converter input rating; must clear V_MAX plus spikes
+BECS = {                         # name: (output volts, continuous amps, what it's for)
+    "BEC1 FC": (5.0, 3.0, "flight controller: J2 Pixhawk-style power port, or the Kakute's peripherals"),
+    "BEC2 AUX": (12.0, 3.0, "other equipment: VTX, cameras, LEDs (jumper to 5 V for USB-type loads)"),
+}
+BEC_EFF = 0.90                   # [E] typical for a buck at these voltages; check the chosen part's efficiency curve
+BEC_SWITCH_A = 5.0               # [V] converter switch current rating
 
 # --- Bulk capacitance and protection ----------------------------------------------------
-CAP_BULK_UF = 470.0              # [E] one low-ESR electrolytic per ESC branch (the ESCs carry their own too)
+CAP_BULK_UF = 470.0              # [E] per capacitor; 4 fitted at 100 A (the ESCs carry their own too)
 CAP_V = 50.0                     # [E] 50 V parts on a 25.2 V bus
 TVS_STANDOFF = 28.0              # [E] e.g. an SMDJ28A-class TVS: off below 28 V, clamps a spike near 45 V (verify part)
 
@@ -75,4 +102,6 @@ TVS_STANDOFF = 28.0              # [E] e.g. an SMDJ28A-class TVS: off below 28 V
 # One JST-SH 8-pin cable to the Kakute's ESC connector, like a 4-in-1 ESC would use.
 # PIN ORDER IS NOT CONFIRMED. Copy it from Holybro's Kakute H7 v1.5 pinout before layout.
 KAKUTE_ESC_PINS = ("VBAT", "GND", "CURR", "TLM", "M1", "M2", "M3", "M4")   # [V] placeholder order
+# J2: Pixhawk-style 6-pin power port (JST-GH). Pin order as I recall the Pixhawk standard; verify against your FC's docs.
+PIXHAWK_POWER_PINS = ("5V", "5V", "CURR", "VOLT", "GND", "GND")   # [V]
 SH_PIN_A = 1.0                   # [V] JST-SH contact rating as I recall it (about 1 A per pin)

@@ -20,12 +20,16 @@ holes = [(sx * P.STACK / 2, sy * P.STACK / 2) for sx in (-1, 1) for sy in (-1, 1
 # Placement plan: (label, centre x, centre y, w, h, rotation deg, kind)
 blocks = []
 # Battery pads on the rear edge, beside the lead slot. + on the left, - on the right (mark on silkscreen).
-blocks += [("BAT+", -8, -H + 6, *P.BATT_PAD, 0, "pos"), ("BAT-", 8, -H + 6, *P.BATT_PAD, 0, "neg")]
-# Shunt and current-sense amplifier just inside the + pad, so all battery current passes the shunt first.
+blocks += [("BAT+", -9, -H + 6, *P.BATT_PAD, 0, "pos"), ("BAT-", 9, -H + 6, *P.BATT_PAD, 0, "neg")]
+# Shunt right inside the + pad, so all battery current passes it first; amplifier, 3.3 V LDO and TVS beside it.
 # Everything stays out of the copper-free rings round the stack holes.
-blocks += [("SHUNT", -5, -16, 10, 5, 0, "part"), ("CSA", -5, -9, 5, 4, 0, "part"), ("TVS", 8, -16, 5, 4, 0, "part")]
-# Bulk capacitors (2 x low-ESR 470 uF / 50 V, 10 x 10 mm SMD) on the side strips, outside the Kakute footprint.
-blocks += [("C1", -24.5, 0, 10, 10, 0, "cap"), ("C2", 24.5, 0, 10, 10, 0, "cap")]
+blocks += [("SHUNT", -4, -17, 10, 5, 0, "part"), ("CSA", 5, -11.5, 5, 4, 0, "part"),
+           ("LDO", -7, -11.5, 4, 3, 0, "part"), ("PMON", -1.5, -11.5, 3, 3, 0, "part"),
+           ("TVS", 7, -17, 5, 4, 0, "part"), ("LED", -16, -21, 2, 1.2, 0, "part")]
+# Bulk capacitors: 4 x low-ESR 470 uF / 50 V, 10 x 10 mm SMD, on the side strips outside the Kakute footprint.
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        blocks.append((f"C{'12'[sx > 0]}{'ab'[sy > 0]}", sx * (H - 7), sy * 5.5, 10, 10, 0, "cap"))
 # ESC pads: one + / - pair per corner, long side pointing out along the arm, side by side along the chamfer.
 reach = H * math.sqrt(2) - C / math.sqrt(2)
 for i, ang in enumerate(P.ARM_ANGLES):
@@ -37,13 +41,18 @@ for i, ang in enumerate(P.ARM_ANGLES):
     for s, lbl, kind in ((-1, "+", "pos"), (1, "-", "neg")):
         blocks.append((f"ESC{i+1}{lbl}", r_pad * ux + s * off * tx, r_pad * uy + s * off * ty, P.ESC_PAD[0], P.ESC_PAD[1], ang, kind))
     sx, sy = (1 if ux > 0 else -1), (1 if uy > 0 else -1)
-    blocks.append((f"S{i+1}", sx * 26.5, sy * 13.0, *P.SIG_PAD, 0, "sig"))
-    blocks.append((f"G{i+1}", sx * 26.5, sy * 9.5, *P.SIG_PAD, 0, "sig"))
-# JST-SH 8-pin to the Kakute, on the front edge (the Kakute sits right above the stack).
-blocks.append(("J1 SH-8 to Kakute", 0, H - 5, 12, 4.5, 0, "part"))
-blocks.append(("LED", 14, H - 5, 2, 1.2, 0, "part"))
-# Optional phase-2 5 V buck (do not fit for now). Under the Kakute: check the part height against the spacers.
-blocks.append(("BEC (DNP)", 0, 8, 14, 8, 0, "dnp"))
+    blocks.append((f"S{i+1}", sx * (H - 3.5), sy * 16.5, *P.SIG_PAD, 0, "sig"))
+    blocks.append((f"G{i+1}", sx * (H - 3.5), sy * 13.0, *P.SIG_PAD, 0, "sig"))
+# The two buck converters in the clear cross between the stack holes. They sit under the Kakute:
+# the spacer between the boards must clear the tallest inductor.
+blocks.append(("BEC1 5V FC", 0, 12, 22, 13, 0, "bec"))
+blocks.append(("BEC2 12/5V AUX", 0, -2.5, 22, 11, 0, "bec"))
+# Rail output pads and the power LED, between the converters and the front connectors.
+blocks += [("5V", -11, 21.5, 3, 2, 0, "rail"), ("G", -7, 21.5, 3, 2, 0, "rail"), ("J3 GH-4 I2C", 0, 21.5, 7, 4.25, 0, "part"),
+           ("AUX", 7, 21.5, 3, 2, 0, "rail"), ("G", 11, 21.5, 3, 2, 0, "rail")]
+# Front edge: J1 to the Kakute (JST-SH 8), J2 Pixhawk-style power port (JST-GH 6).
+blocks.append(("J1 SH-8 Kakute", -8, H - 5, 12, 4.5, 0, "part"))
+blocks.append(("J2 GH-6 FC PWR", 8, H - 5, 10, 4.5, 0, "part"))
 
 
 def rect_pts(cx, cy, w, h, rot):
@@ -57,7 +66,7 @@ S, M = 8.0, 14.0          # px per mm, margin (mm)
 W = P.BAY_INNER + 2 * M
 def tx_(x): return (x + W / 2) * S
 def ty_(y): return (W / 2 - y) * S
-colors = {"pos": "#d9534f", "neg": "#333", "sig": "#2a7ab0", "part": "#8a6d3b", "cap": "#5b8a3a", "dnp": "#999"}
+colors = {"pos": "#d9534f", "neg": "#333", "sig": "#2a7ab0", "part": "#8a6d3b", "cap": "#5b8a3a", "dnp": "#999", "bec": "#7a4fb0", "rail": "#c07a00"}
 svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W*S:.0f}" height="{W*S:.0f}" viewBox="0 0 {W*S:.0f} {W*S:.0f}" font-family="sans-serif">',
        f'<rect width="100%" height="100%" fill="#fff"/>']
 b = P.BAY_INNER / 2
@@ -82,10 +91,10 @@ for lbl, cx, cy, w, h, rot, kind in blocks:
     fill = colors[kind] if kind in ("pos", "neg") else "none"
     svg.append(f'<polygon points="{p}" fill="{fill}" fill-opacity="0.85" stroke="{colors[kind]}" stroke-width="1.5"{dash}/>')
     fs = 9 if kind == "sig" else 11
-    yoff = -(h / 2 + 1.2) * S if kind in ("part", "dnp", "cap") and h < 6 else 4
+    yoff = -(h / 2 + 1.2) * S if kind in ("part", "dnp", "cap", "rail") and h < 6 else 4
     fc = "#fff" if kind in ("pos", "neg") else colors[kind]
     svg.append(f'<text x="{tx_(cx)}" y="{ty_(cy)+ (yoff if yoff != 4 else 4)}" font-size="{fs}" text-anchor="middle" fill="{fc}">{lbl}</text>')
-svg.append(f'<text x="{tx_(0)}" y="{ty_(-b)+32}" font-size="13" text-anchor="middle" fill="#333">PDB v0.1 placement plan, top view, {P.BOARD:g} x {P.BOARD:g} mm, 30.5 mm stack (rear at bottom)</text>')
+svg.append(f'<text x="{tx_(0)}" y="{ty_(-b)+32}" font-size="13" text-anchor="middle" fill="#333">PDB v0.2 placement plan, top view, {P.BOARD:g} x {P.BOARD:g} mm, 30.5 mm stack (rear at bottom)</text>')
 svg.append('</svg>')
 os.makedirs(OUT, exist_ok=True)
 with open(os.path.join(OUT, "layout.svg"), "w") as f:
