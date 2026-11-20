@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="944" height="944" viewBox="0 0 944 944" font-family="sans-serif">
+<rect width="100%" height="100%" fill="#fff"/>
+<rect x="112.0" y="112.0" width="720.0" height="720.0" fill="none" stroke="#bbb" stroke-dasharray="6 4"/>
+<text x="116.0" y="106.0" font-size="13" fill="#888">frame bay, 90 mm inside</text>
+<rect x="120.0" y="112.0" width="176.0" height="720.0" fill="#f0e6ff" opacity="0.5"/>
+<rect x="648.0" y="112.0" width="176.0" height="720.0" fill="#f0e6ff" opacity="0.5"/>
+<rect x="376.0" y="728.0" width="192.0" height="96.0" fill="#eee" stroke="#aaa"/>
+<text x="472.0" y="781.0" font-size="12" text-anchor="middle" fill="#666">battery lead slot</text>
+<line x1="705.3452377915607" y1="238.65476220843934" x2="815.6538956566621" y2="128.3461043433379" stroke="#ccc" stroke-width="10" stroke-linecap="round"/>
+<line x1="238.65476220843934" y1="238.6547622084393" x2="128.3461043433379" y2="128.34610434333786" stroke="#ccc" stroke-width="10" stroke-linecap="round"/>
+<line x1="238.65476220843925" y1="705.3452377915606" x2="128.3461043433378" y2="815.6538956566621" stroke="#ccc" stroke-width="10" stroke-linecap="round"/>
+<line x1="705.3452377915606" y1="705.3452377915607" x2="815.653895656662" y2="815.6538956566621" stroke="#ccc" stroke-width="10" stroke-linecap="round"/>
+<polygon points="664.0,736.0 736.0,664.0 736.0,280.0 664.0,208.0 280.0,208.0 208.0,280.0 208.0,664.0 280.0,736.0" fill="#2e6b3a" fill-opacity="0.12" stroke="#2e6b3a" stroke-width="2"/>
+<circle cx="350.0" cy="594.0" r="28.0" fill="#fff" stroke="#999" stroke-dasharray="3 2"/>
+<circle cx="350.0" cy="594.0" r="13.6" fill="#fff" stroke="#000"/>
+<circle cx="350.0" cy="350.0" r="28.0" fill="#fff" stroke="#999" stroke-dasharray="3 2"/>
+<circle cx="350.0" cy="350.0" r="13.6" fill="#fff" stroke="#000"/>
+<circle cx="594.0" cy="594.0" r="28.0" fill="#fff" stroke="#999" stroke-dasharray="3 2"/>
+<circle cx="594.0" cy="594.0" r="13.6" fill="#fff" stroke="#000"/>
+<circle cx="594.0" cy="350.0" r="28.0" fill="#fff" stroke="#999" stroke-dasharray="3 2"/>
+<circle cx="594.0" cy="350.0" r="13.6" fill="#fff" stroke="#000"/>
+<polygon points="344.0,724.0 456.0,724.0 456.0,652.0 344.0,652.0" fill="#d9534f" fill-opacity="0.85" stroke="#d9534f" stroke-width="1.5"/>
+<text x="400.0" y="692.0" font-size="11" text-anchor="middle" fill="#fff">BAT+</text>
+<polygon points="488.0,724.0 600.0,724.0 600.0,652.0 488.0,652.0" fill="#333" fill-opacity="0.85" stroke="#333" stroke-width="1.5"/>
+<text x="544.0" y="692.0" font-size="11" text-anchor="middle" fill="#fff">BAT-</text>
+<polygon points="400.0,628.0 480.0,628.0 480.0,588.0 400.0,588.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="440.0" y="578.4" font-size="11" text-anchor="middle" fill="#8a6d3b">SHUNT</text>
+<polygon points="492.0,580.0 532.0,580.0 532.0,548.0 492.0,548.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="512.0" y="538.4" font-size="11" text-anchor="middle" fill="#8a6d3b">CSA</text>
+<polygon points="400.0,576.0 432.0,576.0 432.0,552.0 400.0,552.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="416.0" y="542.4" font-size="11" text-anchor="middle" fill="#8a6d3b">LDO</text>
+<polygon points="448.0,576.0 472.0,576.0 472.0,552.0 448.0,552.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="460.0" y="542.4" font-size="11" text-anchor="middle" fill="#8a6d3b">PMON</text>
+<polygon points="508.0,624.0 548.0,624.0 548.0,592.0 508.0,592.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="528.0" y="582.4" font-size="11" text-anchor="middle" fill="#8a6d3b">TVS</text>
+<polygon points="336.0,644.8 352.0,644.8 352.0,635.2 336.0,635.2" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="344.0" y="625.6" font-size="11" text-anchor="middle" fill="#8a6d3b">LED</text>
+<polygon points="224.0,556.0 304.0,556.0 304.0,476.0 224.0,476.0" fill="none" fill-opacity="0.85" stroke="#5b8a3a" stroke-width="1.5"/>
+<text x="264.0" y="520.0" font-size="11" text-anchor="middle" fill="#5b8a3a">C1a</text>
+<polygon points="224.0,468.0 304.0,468.0 304.0,388.0 224.0,388.0" fill="none" fill-opacity="0.85" stroke="#5b8a3a" stroke-width="1.5"/>
+<text x="264.0" y="432.0" font-size="11" text-anchor="middle" fill="#5b8a3a">C1b</text>
+<polygon points="640.0,556.0 720.0,556.0 720.0,476.0 640.0,476.0" fill="none" fill-opacity="0.85" stroke="#5b8a3a" stroke-width="1.5"/>
+<text x="680.0" y="520.0" font-size="11" text-anchor="middle" fill="#5b8a3a">C2a</text>
+<polygon points="640.0,468.0 720.0,468.0 720.0,388.0 640.0,388.0" fill="none" fill-opacity="0.85" stroke="#5b8a3a" stroke-width="1.5"/>
+<text x="680.0" y="432.0" font-size="11" text-anchor="middle" fill="#5b8a3a">C2b</text>
+<polygon points="679.6,334.5 730.5,283.6 699.4,252.5 648.5,303.4" fill="#d9534f" fill-opacity="0.85" stroke="#d9534f" stroke-width="1.5"/>
+<text x="689.5348196384391" y="297.49747468305833" font-size="11" text-anchor="middle" fill="#fff">ESC1+</text>
+<polygon points="640.6,295.5 691.5,244.6 660.4,213.5 609.5,264.4" fill="#333" fill-opacity="0.85" stroke="#333" stroke-width="1.5"/>
+<text x="650.5025253169417" y="258.4651803615609" font-size="11" text-anchor="middle" fill="#fff">ESC1-</text>
+<polygon points="700.0,352.0 716.0,352.0 716.0,328.0 700.0,328.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="708.0" y="344.0" font-size="9" text-anchor="middle" fill="#2a7ab0">S1</text>
+<polygon points="700.0,380.0 716.0,380.0 716.0,356.0 700.0,356.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="708.0" y="372.0" font-size="9" text-anchor="middle" fill="#2a7ab0">G1</text>
+<polygon points="334.5,264.4 283.6,213.5 252.5,244.6 303.4,295.5" fill="#d9534f" fill-opacity="0.85" stroke="#d9534f" stroke-width="1.5"/>
+<text x="293.49747468305833" y="258.4651803615609" font-size="11" text-anchor="middle" fill="#fff">ESC2+</text>
+<polygon points="295.5,303.4 244.6,252.5 213.5,283.6 264.4,334.5" fill="#333" fill-opacity="0.85" stroke="#333" stroke-width="1.5"/>
+<text x="254.4651803615609" y="297.4974746830583" font-size="11" text-anchor="middle" fill="#fff">ESC2-</text>
+<polygon points="228.0,352.0 244.0,352.0 244.0,328.0 228.0,328.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="236.0" y="344.0" font-size="9" text-anchor="middle" fill="#2a7ab0">S2</text>
+<polygon points="228.0,380.0 244.0,380.0 244.0,356.0 228.0,356.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="236.0" y="372.0" font-size="9" text-anchor="middle" fill="#2a7ab0">G2</text>
+<polygon points="264.4,609.5 213.5,660.4 244.6,691.5 295.5,640.6" fill="#d9534f" fill-opacity="0.85" stroke="#d9534f" stroke-width="1.5"/>
+<text x="254.46518036156084" y="654.5025253169417" font-size="11" text-anchor="middle" fill="#fff">ESC3+</text>
+<polygon points="303.4,648.5 252.5,699.4 283.6,730.5 334.5,679.6" fill="#333" fill-opacity="0.85" stroke="#333" stroke-width="1.5"/>
+<text x="293.4974746830583" y="693.5348196384391" font-size="11" text-anchor="middle" fill="#fff">ESC3-</text>
+<polygon points="228.0,616.0 244.0,616.0 244.0,592.0 228.0,592.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="236.0" y="608.0" font-size="9" text-anchor="middle" fill="#2a7ab0">S3</text>
+<polygon points="228.0,588.0 244.0,588.0 244.0,564.0 228.0,564.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="236.0" y="580.0" font-size="9" text-anchor="middle" fill="#2a7ab0">G3</text>
+<polygon points="609.5,679.6 660.4,730.5 691.5,699.4 640.6,648.5" fill="#d9534f" fill-opacity="0.85" stroke="#d9534f" stroke-width="1.5"/>
+<text x="650.5025253169416" y="693.5348196384391" font-size="11" text-anchor="middle" fill="#fff">ESC4+</text>
+<polygon points="648.5,640.6 699.4,691.5 730.5,660.4 679.6,609.5" fill="#333" fill-opacity="0.85" stroke="#333" stroke-width="1.5"/>
+<text x="689.5348196384391" y="654.5025253169417" font-size="11" text-anchor="middle" fill="#fff">ESC4-</text>
+<polygon points="700.0,616.0 716.0,616.0 716.0,592.0 700.0,592.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="708.0" y="608.0" font-size="9" text-anchor="middle" fill="#2a7ab0">S4</text>
+<polygon points="700.0,588.0 716.0,588.0 716.0,564.0 700.0,564.0" fill="none" fill-opacity="0.85" stroke="#2a7ab0" stroke-width="1.5"/>
+<text x="708.0" y="580.0" font-size="9" text-anchor="middle" fill="#2a7ab0">G4</text>
+<polygon points="384.0,428.0 560.0,428.0 560.0,324.0 384.0,324.0" fill="none" fill-opacity="0.85" stroke="#7a4fb0" stroke-width="1.5"/>
+<text x="472.0" y="380.0" font-size="11" text-anchor="middle" fill="#7a4fb0">BEC1 5V FC</text>
+<polygon points="384.0,536.0 560.0,536.0 560.0,448.0 384.0,448.0" fill="none" fill-opacity="0.85" stroke="#7a4fb0" stroke-width="1.5"/>
+<text x="472.0" y="496.0" font-size="11" text-anchor="middle" fill="#7a4fb0">BEC2 12/5V AUX</text>
+<polygon points="372.0,308.0 396.0,308.0 396.0,292.0 372.0,292.0" fill="none" fill-opacity="0.85" stroke="#c07a00" stroke-width="1.5"/>
+<text x="384.0" y="282.4" font-size="11" text-anchor="middle" fill="#c07a00">5V</text>
+<polygon points="404.0,308.0 428.0,308.0 428.0,292.0 404.0,292.0" fill="none" fill-opacity="0.85" stroke="#c07a00" stroke-width="1.5"/>
+<text x="416.0" y="282.4" font-size="11" text-anchor="middle" fill="#c07a00">G</text>
+<polygon points="444.0,317.0 500.0,317.0 500.0,283.0 444.0,283.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="472.0" y="273.4" font-size="11" text-anchor="middle" fill="#8a6d3b">J3 GH-4 I2C</text>
+<polygon points="516.0,308.0 540.0,308.0 540.0,292.0 516.0,292.0" fill="none" fill-opacity="0.85" stroke="#c07a00" stroke-width="1.5"/>
+<text x="528.0" y="282.4" font-size="11" text-anchor="middle" fill="#c07a00">AUX</text>
+<polygon points="548.0,308.0 572.0,308.0 572.0,292.0 548.0,292.0" fill="none" fill-opacity="0.85" stroke="#c07a00" stroke-width="1.5"/>
+<text x="560.0" y="282.4" font-size="11" text-anchor="middle" fill="#c07a00">G</text>
+<polygon points="360.0,266.0 456.0,266.0 456.0,230.0 360.0,230.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="408.0" y="220.4" font-size="11" text-anchor="middle" fill="#8a6d3b">J1 SH-8 Kakute</text>
+<polygon points="496.0,266.0 576.0,266.0 576.0,230.0 496.0,230.0" fill="none" fill-opacity="0.85" stroke="#8a6d3b" stroke-width="1.5"/>
+<text x="536.0" y="220.4" font-size="11" text-anchor="middle" fill="#8a6d3b">J2 GH-6 FC PWR</text>
+<text x="472.0" y="864.0" font-size="13" text-anchor="middle" fill="#333">PDB v0.2 placement plan, top view, 66 x 66 mm, 30.5 mm stack (rear at bottom)</text>
+</svg>
